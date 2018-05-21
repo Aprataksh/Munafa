@@ -1,0 +1,19 @@
+TO DO:
+------------
+
+Downloading stock data:
+1. Add the ability to append the stock data that has been downloaded now to the historical data downloaded earlier
+2. Add the ability to create files with different intervals e.g. instead of the downloaded five minute candle, we may want to check for 15 minute or 30 minute or a daily candle. It can be in multiple of five minutes. The code should have the ability to look at the downloaded stock data with five-minute candle and produce stock data with a candle of longer duration.
+
+Order Management
+1. Add the Ability to place a limit order for either buy/sell
+2. Add the ability to retrieve historical data
+
+
+Implementation of trading strategy
+1. Implement MACD divergence
+
+
+
+
+
