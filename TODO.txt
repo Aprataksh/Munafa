@@ -5,7 +5,8 @@ Downloading stock data:
 1. Add the ability to append the stock data that has been downloaded now to the historical data downloaded earlier
 2. Add the ability to create files with different intervals e.g. instead of the downloaded five minute candle, we may want to check for 15 minute or 30 minute or a daily candle. It can be in multiple of five minutes. The code should have the ability to look at the downloaded stock data with five-minute candle and produce stock data with a candle of longer duration.
 3. Create a system to alert for forthcoming results date. There is an state should be available for various time frames including the current week, next week and the current month. At a later stage, it should check the current holdings of the customer and then automatically alert her to the dates of results of the companies in her holdings.
-
+4. Package the Python script so that they can be run from command line in parallel.
+5. Download the data for the indexes including the nifty 50, Nifty Midcap, Nifty IT, nifty auto and nifty FMCG
 Order Management
 1. Add the Ability to place a limit order for either buy/sell
 2. Add the ability to retrieve historical data
@@ -14,6 +15,8 @@ Order Management
 Implementation of trading strategy
 1. Implement MACD divergence
 2. Implement open, high, low strategy
+3. Implement Heikin-Ashi with stochastic RSI
+4. Implement various candlestick patterns detection using ta lib and run on the five-minute candle data.
 
 Unit testing: 
 1. Develop a framework for unit testing and error management
