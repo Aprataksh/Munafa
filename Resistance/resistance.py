@@ -10,8 +10,22 @@ import xlsxwriter
 
 def resistance(ticker):
     df = pd.read_csv(path_to_historical_data + ticker + ".csv")
+
+    """CODE TO GET INDEX FOR DATA AFTER INITIAL DATE"""
+    date_data = df['Date Time'].tolist()
+    index = 0
+    for date in date_data:
+        if initial_data in date:
+            index = date_data.index(date)
+            break
+    if index == 0:
+        print("No data present for such date")
+    else:
+
+        """CODE TO CALCULATE RESISTANCE"""
+
     if len(df.columns) >= 6:
-        high_data = (df['High']).tolist()
+        high_data = (df['High'][index:]).tolist()
         maxi = math.ceil(max(high_data))
         mini = math.floor(min(high_data))
         interval = numpy.around(numpy.linspace(mini, maxi, no_of_intervals+1), 2).tolist()
@@ -38,9 +52,8 @@ def resistance(ticker):
 ticker_list = []
 high_data = []
 max_list= []
-intervals_data = []
-no_of_intervals = 10
 columns = []
+intervals_data = []
 new_ticker_list = []
 
 '''
@@ -52,6 +65,11 @@ path_to_historical_data = "C:/Users/Rohit/Python_source_code/current_stock_5_min
 # the list that contains the symbols for all the stocks that need to be downloaded
 path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
 path_to_output = "C:/Users/Rohit/Python_source_code/Munafa/Resistance/resistance3.csv"
+# the initial date from which we need to start processing the data.
+# make sure that this date falls on a trading  day.
+initial_data = "2018-05-21"
+# number of intervals in which the price range will be divided. the larger the number,the more accurate the information
+no_of_intervals = 10
 
 for i in range(1,no_of_intervals+1):
     columns.append("INTERVAL NO. " + str(i))
