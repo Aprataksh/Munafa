@@ -7,6 +7,7 @@ import numpy
 import math
 import pandas as pd
 import xlsxwriter
+import datetime
 
 def resistance(ticker):
     df = pd.read_csv(path_to_historical_data + ticker + ".csv")
@@ -64,7 +65,10 @@ global configuration settings
 path_to_historical_data = "C:/Users/Rohit/Python_source_code/current_stock_5_min_data/"
 # the list that contains the symbols for all the stocks that need to be downloaded
 path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
-path_to_output = "C:/Users/Rohit/Python_source_code/Munafa/Resistance/resistance3.csv"
+# determine the timestamp to append to the nname of the output file
+time=str(datetime.datetime.today())[:13]+";"+str(datetime.datetime.today())[14:16]
+path_to_output = "C:/Users/Rohit/Python_source_code/Munafa/Resistance/resistance4 ; " + time + ".csv"
+
 # the initial date from which we need to start processing the data.
 # make sure that this date falls on a trading  day.
 initial_data = "2018-05-21"
