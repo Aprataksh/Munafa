@@ -74,10 +74,16 @@ append_to_historical_data = 1
 
 # modify the directory path below according to your requirements
 # Note: these directories should already be existing in your file system
+path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
+path_to_cur_stock_data_directory = "C:/Users/Rohit/Python_source_code/current_stock_5_min_data/"
+
+'''
+# configuration for testing
 path_to_historical_data = "C:/Users/Rohit/Python_source_code/test_nse 500 historical data/"
 path_to_cur_stock_data_directory = "C:/Users/Rohit/Python_source_code/test_current_stock_data/"
+'''
 # the list that contains the symbols for all the stocks that need to be downloaded
-path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/test_nifty500_list.csv"
+path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
 
 get_ticker_list()
 for ticker in ticker_list:
@@ -86,17 +92,11 @@ for ticker in ticker_list:
     print(ticker)
     df = get_google_finance_intraday(ticker, exchange, period=period, days=days)
     df.to_csv(path_to_cur_stock_data_directory + ticker + ".csv")
-    '''
-    when we read the data in the data frame, it also prepends every row with the row number
-    '''
-    if (append_to_historical_data == 1):
-        historical_df = pd.read_csv(path_to_historical_data + ticker + ".csv")
-        appended_data = historical_df.append(df)
-        appended_data.to_csv(path_to_historical_data + ticker + " backup2"+".csv")
-    '''
 
-    with open(path_to_historical_data+ ticker + ".csv", 'a') as f:
-        with open(path_to_cur_stock_data_directory + ticker + ".csv", 'r') as tempfile:
+    if (append_to_historical_data == 1):
+        with open(path_to_historical_data+ ticker + ".csv", 'a') as f:
+            with open(path_to_cur_stock_data_directory + ticker + ".csv", 'r') as tempfile:
+                f.write(tempfile.read())
             '''
             Using csv.reader and a writer along with the writerow does not work because
             while writing, and extra blank row is being added
@@ -107,7 +107,17 @@ for ticker in ticker_list:
                     if "Close" not in line:
                         row_file_writer.writerow(line)
              '''
-                f.write(tempfile.read())
+
+        '''
+            when we read the data in the data frame, it also prepends every row with the row number
+        '''
+        '''    
+        if (append_to_historical_data == 1):
+            historical_df = pd.read_csv(path_to_historical_data + ticker + ".csv")
+            appended_data = historical_df.append(df)
+            appended_data.to_csv(path_to_historical_data + ticker + " backup2"+".csv")
+        '''
+
 
 
 
