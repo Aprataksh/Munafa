@@ -13,16 +13,19 @@ class OHL():
     overall_cost=0.0
     overall_sell=0.0
     overall_c_wins = 0
+    overall_c_stoploss = 0
     overall_c_sellEod = 0
     c_total_sellEOD = 0
     c_total_wins = 0
+    c_total_stoploss = 0
 
-    def __init__(self, mpv, mdfo, mvv, mcfsb, tp):
+    def __init__(self, mpv, mdfo, mvv, mcfsb, tp,sl):
         self.max_price_volatility = mpv
         self.max_deviation_from_open = mdfo
         self.max_volume_volatility = mvv
         self.max_capital_for_single_buy = mcfsb
         self.target_price = tp
+        self.stop_loss = sl
 
     def check_price_volatility(self,index_open,index_close):
         i = index_open + 1
@@ -64,6 +67,18 @@ class OHL():
             print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_wins = self.overall_c_wins + 1
             self.c_total_wins = self.c_total_wins + 1
+            return True
+        return False
+
+    def sell_stock_due_to_stop_loss(self,bought,close_price,index):
+        per = (float(self.rowslist[index][2]) - close_price) / close_price
+        if per <= self.stop_loss:
+            self.total_sell = self.total_sell + bought * float(self.rowslist[index][2])
+            self.overall_sell+=self.total_sell
+            self.total_sold+=bought
+            print("Stop Loss Sale: Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
+            self.overall_c_stoploss = self.overall_c_stoploss + 1
+            self.c_total_stoploss = self.c_total_stoploss + 1
             return True
         return False
 
@@ -137,22 +152,24 @@ class OHL():
                                 if bought != 0:
                                     if self.sell_stock_due_to_price_check(bought,close_price,index):
                                         bought=0
+                                    if self.sell_stock_due_to_stop_loss(bought, close_price, index):
+                                        bought=0
                                 if "15:15" in self.rowslist[index][0] and bought != 0:
                                     self.sell_stock_at_end_of_day(index,bought)
                                 index+=1
                             print("Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) + " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " + self.line[2] + "\n")
-                            print("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " + str(self.c_total_sellEOD))
+                            print("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " + str(self.c_total_sellEOD) + " Stop Loss = " + str(self.c_total_stoploss) )
         print("Total purchases = "+str(self.total_purchased)+" total sold = "+str(self.total_sold)+"\n")
         print("Overall cost = "+str(self.overall_cost)+" Overall sell = "+str(self.overall_sell)+"\n")
-        print("Overall wins = " + str(self.overall_c_wins) + " Total sell EOD = " + str(self.overall_c_sellEod))
+        print("Overall wins = " + str(self.overall_c_wins) + " Total sell EOD = " + str(self.overall_c_sellEod) + " Overall stoploss = " + str(self.overall_c_stoploss))
 def main():
     max_price_volatility = 0.02
     max_deviation_from_open= 0.005
     max_volume_volatility = 2
     max_capital_for_single_buy=10000
     target_price=0.005
-
-    obj=OHL(max_price_volatility,max_deviation_from_open,max_volume_volatility,max_capital_for_single_buy,target_price)
+    stop_loss=0.01
+    obj=OHL(max_price_volatility,max_deviation_from_open,max_volume_volatility,max_capital_for_single_buy,target_price,stop_loss)
     obj.OHL()
 
 main()
