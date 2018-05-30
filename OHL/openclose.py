@@ -52,7 +52,7 @@ class OHL():
             self.overall_cost+=self.total_cost
             print("Stock " + self.line[2] + " bought " + str(bought) + " shares at " + str(purchase_cost) + " price at date " + str(self.rowslist[index_close])[2:12] + " at time " + str(self.rowslist[index_close])[12:18] + "\n")
         else:
-            print("Could not buy stock " + self.line[2] + " on date " + str(self.rowslist[index_open])[2:12] + " due to insufficient daily stock fund\n")
+            print("Could not buy stock " + self.line[2] + " on date " + str(self.rowslist[index_close])[2:12] + " due to insufficient daily stock fund\n")
         return bought
 
     def sell_stock_due_to_price_check(self,bought,close_price,index):
@@ -61,7 +61,7 @@ class OHL():
             self.total_sell = self.total_sell + bought * float(self.rowslist[index][2])
             self.overall_sell+=self.total_sell
             self.total_sold+=bought
-            print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[14:18] + "\n")
+            print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_wins = self.overall_c_wins + 1
             self.c_total_wins = self.c_total_wins + 1
             return True
@@ -71,16 +71,16 @@ class OHL():
         self.total_sold+=bought
         self.total_sell = self.total_sell + bought * float(self.rowslist[index][1])
         self.overall_sell+=self.total_sell
-        print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][1] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[14:18] + "\n")
+        print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][1] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
         self.overall_c_sellEod = self.overall_c_sellEod + 1
         self.c_total_sellEOD = self.c_total_sellEOD + 1
     def OHL(self):
         # the list that contains the symbols for all the stocks that need to be downloaded
-        path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
+        path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
 
         path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
 
-        path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
+        path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/NIFTY.csv"
 
         with open(path_to_stock_master_list, 'r') as f:
             self.lines = csv.reader(f)
@@ -150,7 +150,7 @@ def main():
     max_deviation_from_open= 0.005
     max_volume_volatility = 2
     max_capital_for_single_buy=10000
-    target_price=0.015
+    target_price=0.005
 
     obj=OHL(max_price_volatility,max_deviation_from_open,max_volume_volatility,max_capital_for_single_buy,target_price)
     obj.OHL()

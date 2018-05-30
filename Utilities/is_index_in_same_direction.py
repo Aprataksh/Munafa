@@ -11,7 +11,8 @@ def is_index_in_same_direction(path_to_index, direction, final_date):
             index = date_data.index(date)
             break
     if index == 0:
-        print("is_index_in_same_direction: no such date")
+        print("is_index_in_same_direction: no such date: " + str(final_date))
+        return False
     else:
         open_price = data['Close'][index]
         while True:
