@@ -1,4 +1,7 @@
 import csv
+import sys
+sys.path.insert(0, r"..\utilities")
+import is_index_in_same_direction
 
 class OHL():
     rowslist=[]
@@ -9,6 +12,10 @@ class OHL():
     total_sold=0
     overall_cost=0.0
     overall_sell=0.0
+    overall_c_wins = 0
+    overall_c_sellEod = 0
+    c_total_sellEOD = 0
+    c_total_wins = 0
 
     def __init__(self, mpv, mdfo, mvv, mcfsb, tp):
         self.max_price_volatility = mpv
@@ -55,6 +62,8 @@ class OHL():
             self.overall_sell+=self.total_sell
             self.total_sold+=bought
             print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[14:18] + "\n")
+            self.overall_c_wins = self.overall_c_wins + 1
+            self.c_total_wins = self.c_total_wins + 1
             return True
         return False
 
@@ -63,12 +72,15 @@ class OHL():
         self.total_sell = self.total_sell + bought * float(self.rowslist[index][1])
         self.overall_sell+=self.total_sell
         print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][1] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[14:18] + "\n")
-    
+        self.overall_c_sellEod = self.overall_c_sellEod + 1
+        self.c_total_sellEOD = self.c_total_sellEOD + 1
     def OHL(self):
         # the list that contains the symbols for all the stocks that need to be downloaded
         path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
 
         path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
+
+        path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
 
         with open(path_to_stock_master_list, 'r') as f:
             self.lines = csv.reader(f)
@@ -86,6 +98,8 @@ class OHL():
                             c = 0
                             self.total_cost = 0.0
                             self.total_sell = 0.0
+                            self.c_total_wins = 0
+                            self.c_total_sellEOD = 0
                             date = '0'
                             while index < len(self.rowslist):
                                 row = self.rowslist[index]
@@ -112,6 +126,9 @@ class OHL():
                                             f = 1
                                         if self.check_volume_volatility(index_open,index_close):
                                             f = 1
+                                        if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1, date):
+                                            f = 1
+
                                         if f == 0:
                                             bought=self.buy_stocks(close_price,index_close)
                                     else:
@@ -124,9 +141,10 @@ class OHL():
                                     self.sell_stock_at_end_of_day(index,bought)
                                 index+=1
                             print("Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) + " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " + self.line[2] + "\n")
+                            print("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " + str(self.c_total_sellEOD))
         print("Total purchases = "+str(self.total_purchased)+" total sold = "+str(self.total_sold)+"\n")
         print("Overall cost = "+str(self.overall_cost)+" Overall sell = "+str(self.overall_sell)+"\n")
-
+        print("Overall wins = " + str(self.overall_c_wins) + " Total sell EOD = " + str(self.overall_c_sellEod))
 def main():
     max_price_volatility = 0.02
     max_deviation_from_open= 0.005
