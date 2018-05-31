@@ -1,5 +1,6 @@
 import csv
 import sys
+import pandas as pd
 sys.path.insert(0, r"..\utilities")
 import is_index_in_same_direction
 
@@ -27,6 +28,8 @@ class OHL():
         self.max_capital_for_single_buy = mcfsb
         self.target_price = tp
         self.stop_loss = sl
+        self.recorded_date = []
+        self.day_open_price = []
 
     def check_price_volatility(self,index_open,index_close):
         i = index_open + 1
@@ -65,7 +68,7 @@ class OHL():
         per = (float(self.rowslist[index][2]) - close_price) / close_price
         if per >= self.target_price:
             self.total_sell = self.total_sell + bought * float(self.rowslist[index][2])
-            self.overall_sell = self.overall_sell + (bought * close_price)
+            self.overall_sell = self.overall_sell + bought * float(self.rowslist[index][2])
             self.total_sold+=bought
             print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_wins = self.overall_c_wins + 1
@@ -77,7 +80,7 @@ class OHL():
         per = (float(self.rowslist[index][2]) - close_price) / close_price
         if per <= self.stop_loss:
             self.total_sell = self.total_sell + bought * float(self.rowslist[index][2])
-            self.overall_sell+=self.total_sell
+            self.overall_sell = self.overall_sell + bought * float(self.rowslist[index][2])
             self.total_sold+=bought
             print("Stop Loss Sale: Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_stoploss = self.overall_c_stoploss + 1
@@ -85,26 +88,30 @@ class OHL():
             return True
         return False
 
-    def sell_stock_at_end_of_day(self,index,bought):
+    def sell_stock_at_end_of_day(self,bought,close_price,index):
         self.total_sold+=bought
         self.total_sell = self.total_sell + bought * float(self.rowslist[index][1])
-        self.overall_sell+=self.total_sell
+        self.overall_sell = self.overall_sell + bought * float(self.rowslist[index][1])
         print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][1] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
         self.overall_c_sellEod = self.overall_c_sellEod + 1
         self.c_total_sellEOD = self.c_total_sellEOD + 1
 
     def OHL(self):
         # the list that contains the symbols for all the stocks that need to be downloaded
-        path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
-        #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
+        #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
+        path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
 
         path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
 
-        path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/NIFTY.csv"
-        #path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
+        #path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/NIFTY.csv"
+        path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
 
         with open(path_to_stock_master_list, 'r') as f:
             self.lines = csv.reader(f)
+            # re-initialise all the variables for the output columns as we have started breeding a new stock
+            self.recorded_date = []
+            self.day_open_price = []
+
             for self.line in self.lines:
                     if "Symbol" not in self.line:
                         with open(path_to_historical_data + self.line[2] + ".csv", 'r') as g:
@@ -134,8 +141,10 @@ class OHL():
                                     c = 0
                                     date = str(row[0])[2:10]
                                     index_open = index
+                                    self.recorded_date.append(date[6:8])
                                     # record the day open price
                                     open_price = float(row[4])
+                                    self.day_open_price.append(open_price)
                                 # check for the price at 10 AM and ...
                                 if date + " 10:00:00" in row[0]:
                                     # record the close price of the 10 AM candle
@@ -155,7 +164,8 @@ class OHL():
                                             f = 1
                                         if self.check_volume_volatility(index_open,index_close):
                                             f = 1
-                                        if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1, date):
+                                        if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1, date)\
+                                                == False:
                                             f = 1
 
                                         if f == 0:
@@ -166,22 +176,27 @@ class OHL():
                                 if bought != 0:
                                     if self.sell_stock_due_to_price_check(bought,close_price,index):
                                         bought=0
+                                if bought != 0:
                                     if self.sell_stock_due_to_stop_loss(bought, close_price, index):
                                         bought=0
                                 if "15:15" in self.rowslist[index][0] and bought != 0:
-                                    self.sell_stock_at_end_of_day(index,bought)
+                                    self.sell_stock_at_end_of_day(bought, close_price, index)
+                                    bought = 0
                                 index+=1
+                            if bought != 0:
+                                print("***Error: could not sell stock\n***")
                             print("Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) + " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " + self.line[2] + "\n")
                             print("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " + str(self.c_total_sellEOD) + " Stop Loss = " + str(self.c_total_stoploss) )
+
         print("Total purchases = "+str(self.total_purchased)+" total sold = "+str(self.total_sold)+"\n")
         print("Overall cost = "+str(self.overall_cost)+" Overall sell = "+str(self.overall_sell)+"\n")
-        print("Overall buys = " + str(self.c_overall_buy_trans) + " Overall wins = " + str(self.overall_c_wins) + " Total sell EOD = " + str(self.overall_c_sellEod) + " Overall stoploss = " + str(self.overall_c_stoploss))
+        print("Overall buys = " + str(self.c_overall_buy_trans) + " Overall wins = " + str(self.overall_c_wins) + " Overall sell EOD = " + str(self.overall_c_sellEod) + " Overall stoploss = " + str(self.overall_c_stoploss))
 def main():
     max_price_volatility = 0.02
     max_deviation_from_open= 0.005
     max_volume_volatility = 2
     max_capital_for_single_buy=10000
-    target_price=0.005
+    target_price=0.01
     #the stoploss needs to be negative.
     stop_loss=-0.01
     obj=OHL(max_price_volatility,max_deviation_from_open,max_volume_volatility,max_capital_for_single_buy,target_price,stop_loss)
