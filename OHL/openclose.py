@@ -58,6 +58,7 @@ class OHL():
             self.total_purchased+=bought
             self.overall_cost = self.overall_cost + (bought * purchase_cost)
             self.c_overall_buy_trans = self.c_overall_buy_trans + 1
+            self.buy_amount.append(bought * purchase_cost)
             print("Stock " + self.line[2] + " bought " + str(bought) + " shares at " + str(purchase_cost) + " price at date " + str(self.rowslist[index_close])[2:12] + " at time " + str(self.rowslist[index_close])[12:18] + "\n")
         else:
             # this may happen if the price of one stock is more than the  maximum capital
@@ -73,6 +74,7 @@ class OHL():
             print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_wins = self.overall_c_wins + 1
             self.c_total_wins = self.c_total_wins + 1
+            self.sell_amount.append(bought * float(self.rowslist[index][2]))
             return True
         return False
 
@@ -85,6 +87,7 @@ class OHL():
             print("Stop Loss Sale: Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_stoploss = self.overall_c_stoploss + 1
             self.c_total_stoploss = self.c_total_stoploss + 1
+            self.sell_amount.append(bought * float(self.rowslist[index][2]))
             return True
         return False
 
@@ -95,26 +98,37 @@ class OHL():
         print("Stock " + self.line[2] + " sold " + str(bought) + " shares at " + self.rowslist[index][1] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
         self.overall_c_sellEod = self.overall_c_sellEod + 1
         self.c_total_sellEOD = self.c_total_sellEOD + 1
-
+        self.sell_amount.append(bought * float(self.rowslist[index][1]))
     def OHL(self):
         # the list that contains the symbols for all the stocks that need to be downloaded
         #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
         path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
-
+        # directory path to the historical data. Ensure that there is a / at the end
         path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
 
         #path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/NIFTY.csv"
         path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
 
+        path_to_output_directory="C:/Users/Rohit/Python_source_code/output/OHL/"
         with open(path_to_stock_master_list, 'r') as f:
             self.lines = csv.reader(f)
-            # re-initialise all the variables for the output columns as we have started breeding a new stock
-            self.recorded_date = []
-            self.day_open_price = []
 
             for self.line in self.lines:
                     if "Symbol" not in self.line:
                         with open(path_to_historical_data + self.line[2] + ".csv", 'r') as g:
+                            # re-initialise all the variables for the output columns as we have started reading a new stock
+                            self.recorded_date = []
+                            self.day_open_price = []
+                            self.rejected_price = []
+                            self.buy_amount = []
+                            self.sell_amount = []
+                            '''
+                            self.recorded_date = ["Date"]
+                            self.day_open_price = ["Day Open"]
+                            self.rejected_price = ["Rejected Price"]
+                            self.buy_amount = ["Purchase amount"]
+                            self.sell_amount = ["Sell amount"]
+                            '''
                             print('\n',self.line[2])
                             rows = csv.reader(g)
                             self.rowslist = list(rows)
@@ -160,7 +174,8 @@ class OHL():
                                     # check if the day Open price is almost equal to the close price of the candle at 10 AM
                                     if 0 <= ((close_price - open_price) / open_price) <= self.max_deviation_from_open:
                                         f = 0
-                                        if self.check_price_volatility(index_open,index_close): 
+                                        if self.check_price_volatility(index_open,index_close):
+                                            self.rejected_price.append("1")
                                             f = 1
                                         if self.check_volume_volatility(index_open,index_close):
                                             f = 1
@@ -183,10 +198,22 @@ class OHL():
                                     self.sell_stock_at_end_of_day(bought, close_price, index)
                                     bought = 0
                                 index+=1
+                            # this is unexpected condition. It may happen only if  there has been no trade at 15:15
                             if bought != 0:
                                 print("***Error: could not sell stock\n***")
                             print("Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) + " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " + self.line[2] + "\n")
                             print("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " + str(self.c_total_sellEOD) + " Stop Loss = " + str(self.c_total_stoploss) )
+                            ''' this code needs to be modified. Committing this to unblock Aayushmaan Rajora
+                            rows = zip(self.recorded_date, self.day_open_price)
+                            rows = zip(rows,self.rejected_price)
+                            rows = zip(rows, self.buy_amount)
+                            rows = zip(rows, self.sell_amount)
+                            
+                            with open(path_to_output_directory + self.line[2] + ".csv", 'w', newline="") as f:
+                                writer = csv.writer(f)
+                                for row in rows:
+                                    writer.writerow(row)
+                            '''
 
         print("Total purchases = "+str(self.total_purchased)+" total sold = "+str(self.total_sold)+"\n")
         print("Overall cost = "+str(self.overall_cost)+" Overall sell = "+str(self.overall_sell)+"\n")
