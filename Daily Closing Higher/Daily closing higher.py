@@ -25,7 +25,7 @@ class OHL():
     column_no_of_ticker = 0
 
     # column_no_of_ticker = 2
-    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl):
+    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns):
         self.deviation_from_prev_close = dfpc
         self.max_price_volatility = mpv
         self.max_deviation_from_open = mdfo
@@ -35,6 +35,7 @@ class OHL():
         self.stop_loss = sl
         self.recorded_date = []
         self.day_open_price = []
+        self.max_ndays_scan = mns
 
     def new_output_row(self):
         self.recorded_date.append("0")
@@ -200,6 +201,8 @@ class OHL():
                                 # initialise output variables
                                 self.new_output_row()
 
+                                ndays_scanned = 0
+
                                 break
 
                         # After getting the index, the closing of the previous day
@@ -226,57 +229,84 @@ class OHL():
                         open_price = float(self.rowslist[index][4])
                         # print(open_price)
                         self.day_open_price[-1] = str(open_price)
+                        do_not_buy = 0
 
                         c = 0
                         # initial value of index
                         # = index of the row with the first occurrence of the date from which we have to scan
                         while index < len(self.rowslist):
                             row = self.rowslist[index]
-                            if 'Close' in row:
-                                index += 1
-                                continue
-                            #Current price of the stock
-                            current_price = float(row[1])
 
                             # do not read data which contains  headers such as "Close"
                             if 'Close' in row:
                                 index += 1
                                 continue
 
-                            if row[0][8:10] != date[8:10]:
-                                # encountered a new date; stop scanning because they look at the dates
+                            # Current price of the stock
+                            current_price = float(row[1])
+
+                            if row[0][:10] != date[:10]:
+                                # encountered a new date;
+                                date = row[0][:10]
+                                do_not_buy = 1
+                                ndays_scanned = ndays_scanned + 1
+                                # stop scanning if we exceed the threshold of number of days to be scanned from the date
                                 # recommended by the previous algorithm ( in this case the daily closing higher)
-                                break
+                                if ndays_scanned > self.max_ndays_scan:
+                                    break
 
 
-                            # Condition for the deviation of price from close price of previous day
-                            if bought == 0:
+                            # if no stocks have been bought as yet...
+                            if bought == 0 and do_not_buy == 0:
+                                # ... and the current price is near the closing price of the previous day
                                 if abs(prev_close_price - current_price) \
                                         < abs(self.deviation_from_prev_close * prev_close_price):
-                                    # if there are more than one transactions, initialising a new draw for output
-                                    if (self.c_transactions_today > 0):
-                                        self.new_output_row()
-                                    #print("Transactions today: ", self.c_transactions_today)
-                                    self.recorded_date[-1] = date
-                                    self.day_open_price[-1] = str(open_price)
-                                    bought = self.buy_stocks(current_price, index)
-                                    purchase_price = current_price
+                                    # ... and the corresponding index is also increasing
+                                    '''
+                                    if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1,
+                                                                                             date) \
+                                    '''
+                                    if True:
+                                        # ... simulate the buying of stocks
+
+                                        # 1. if there are more than one transactions, initialise a new row for output
+                                        if (self.c_transactions_today > 0):
+                                            self.new_output_row()
+                                        # print("Transactions today: ", self.c_transactions_today)
+                                        # ... & update the output
+                                        self.index_in_same_direction[-1] = "1"
+                                        self.recorded_date[-1] = date
+                                        self.day_open_price[-1] = str(open_price)
+
+                                        # 2. buy the stocks at the current price and  update the tracking counters
+                                        bought = self.buy_stocks(current_price, index)
+                                        purchase_price = current_price
 
                             if bought != 0:
                                 if self.sell_stock_due_to_price_check(bought, purchase_price, index):
                                     bought = 0
+                                    ndays_scanned = 0
                             if bought != 0:
                                 if self.sell_stock_due_to_stop_loss(bought, purchase_price, index):
                                     bought = 0
-                            if "15:30" in self.rowslist[index][0] and bought != 0:
-                                self.sell_stock_at_end_of_day(bought, purchase_price, index)
-                                bought = 0
+                                    ndays_scanned = 0
+                            '''        
+                            print("ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
+                                self.max_ndays_scan) + "\n" + "bought: " + str(bought) + "\n" + str(self.rowslist[index]))
+                            '''
+                            if (ndays_scanned == self.max_ndays_scan) or (index == len(self.rowslist)):
+                                if "15:30" in self.rowslist[index][0] and bought != 0:
+                                    self.sell_stock_at_end_of_day(bought, purchase_price, index)
+                                    bought = 0
+                                    ndays_scanned = 0
 
                             index += 1
 
                         # this is unexpected condition. It may happen only if  there has been no trade at 15:15
                         if bought != 0:
-                            print("***Error: could not sell stock\n***")
+                            print("***Error: could not sell stock  = ***" + "\n")
+                            print("***ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(self.max_ndays_scan) + "\n")
+
                         print("Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) +
                               " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " +
                               self.line[self.column_no_of_ticker] + "\n")
@@ -304,21 +334,23 @@ class OHL():
 
 
 def main():
-    deviation_from_prev_close = .02
+    deviation_from_prev_close = 0.02
     max_price_volatility = 100
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.008
+    target_price = 0.01
     # the stoploss needs to be negative.
-    stop_loss = -0.02
+    stop_loss = -0.005
+    max_ndays_scan = 3
 
     print(" Configuration for this run: " + "\n" + " deviation from previous close: " + str(deviation_from_prev_close) + "\n")
     print(" target price:" + str(target_price) + " stoploss: " + str(stop_loss) + "\n")
     print(" maximum capital for single purchase: " + str(max_capital_for_single_buy) + "\n")
+    print(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
 
     obj = OHL(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility, max_capital_for_single_buy,
-              target_price, stop_loss)
+              target_price, stop_loss, max_ndays_scan)
     obj.OHL()
 
 
