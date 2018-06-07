@@ -36,6 +36,10 @@ class OHL():
         self.recorded_date = []
         self.day_open_price = []
         self.max_ndays_scan = mns
+        tf = open("C:/Users/Rohit/Python_source_code/output/daily_closing_higher/transactions.csv", 'w', newline="")
+        self.transactions_file = csv.writer(tf)
+
+
 
     def new_output_row(self):
         self.recorded_date.append("0")
@@ -54,15 +58,33 @@ class OHL():
 
         bought = int(self.max_capital_for_single_buy / purchase_cost)
         if bought != 0:
-            self.total_cost = self.total_cost + (bought * purchase_cost)
+            actual_cost = (bought * purchase_cost)
+            self.total_cost = self.total_cost + actual_cost
             self.total_purchased += bought
-            self.overall_cost = self.overall_cost + (bought * purchase_cost)
+            self.overall_cost = self.overall_cost + actual_cost
             self.c_overall_buy_trans = self.c_overall_buy_trans + 1
             self.c_transactions_today  = self.c_transactions_today  + 1
-            self.buy_amount[-1] = str(bought * purchase_cost)
+            self.buy_amount[-1] = str(actual_cost)
             print("Stock " + self.line[0] + " bought " + str(bought) + " shares at " + str(
                 purchase_cost) + " price at date " + str(self.rowslist[index_close])[2:12] + " at time " + str(
                 self.rowslist[index_close])[12:18] + "\n")
+
+            rowlist = []
+            rowlist.append(str(self.rowslist[index_close])[2:12])
+            rowlist.append(str(self.rowslist[index_close])[12:18])
+            rowlist.append(self.line[0])
+            rowlist.append("1")
+            rowlist.append(str(bought))
+            rowlist.append(str(purchase_cost))
+            rowlist.append(str(actual_cost))
+            rowlist.append("0")
+            self.transactions_file.writerow(rowlist)
+
+            '''
+            self.transactions_file.writerow(str(self.rowslist[index_close])[2:12] +  str(self.rowslist[index_close])[12:18] +
+                                            self.line[0] +  "1" +  str(bought) + str(purchase_cost) + str(0.0-actual_cost) +
+                                            "0")
+            '''
         else:
             # this may happen if the price of one stock is more than the  maximum capital
             print("Could not buy stock " + self.line[0] + " on date " + str(self.rowslist[index_close])[
@@ -72,8 +94,9 @@ class OHL():
     def sell_stock_due_to_price_check(self, bought, close_price, index):
         per = (float(self.rowslist[index][2]) - close_price) / close_price
         if per >= self.target_price:
-            self.total_sell = self.total_sell + bought * float(self.rowslist[index][2])
-            self.overall_sell = self.overall_sell + bought * float(self.rowslist[index][2])
+            sell_amount = bought * float(self.rowslist[index][2])
+            self.total_sell = self.total_sell + sell_amount
+            self.overall_sell = self.overall_sell + sell_amount
             self.total_sold += bought
             print("Stock " + self.line[0] + " sold " + str(bought) + " shares at " + self.rowslist[index][
                 2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[
@@ -83,14 +106,35 @@ class OHL():
             # the last element has already been initialised to  0.  modify it to the sold amount
             self.sell_amount[-1] = bought * float(self.rowslist[index][2])
             self.sell_met_target[-1] = "1"
+
+
+            rowlist = []
+            rowlist.append(str(self.rowslist[index])[2:12])
+            rowlist.append(str(self.rowslist[index])[12:18])
+            rowlist.append(self.line[0])
+            rowlist.append("0")
+            rowlist.append(str(bought))
+            rowlist.append(str(self.rowslist[index][2]))
+            rowlist.append(str(sell_amount))
+            rowlist.append("1")
+            self.transactions_file.writerow(rowlist)
+
+
+            '''
+            self.transactions_file.writerow(str(self.rowslist[index])[2:12] +
+                                            str(self.rowslist[index])[12:18] +
+                                            self.line[0] + "0" + str(bought) + str(self.rowslist[index][2]) +
+                                            str(sell_amount) +  "1")
+            '''
             return True
         return False
 
     def sell_stock_due_to_stop_loss(self, bought, close_price, index):
         per = (float(self.rowslist[index][2]) - close_price) / close_price
         if per <= self.stop_loss:
-            self.total_sell = self.total_sell + bought * float(self.rowslist[index][2])
-            self.overall_sell = self.overall_sell + bought * float(self.rowslist[index][2])
+            sell_amount = bought * float(self.rowslist[index][2])
+            self.total_sell = self.total_sell + sell_amount
+            self.overall_sell = self.overall_sell + sell_amount
             self.total_sold += bought
             print(
                 "Stop Loss Sale: Stock " + self.line[0] + " sold " + str(bought) + " shares at " + self.rowslist[index][
@@ -101,6 +145,24 @@ class OHL():
             # the last element has already been initialised to  0.  modify it to the sold amount
             self.sell_amount[-1] = bought * float(self.rowslist[index][2])
             self.sell_stop_loss[-1] = "1"
+            rowlist = []
+            rowlist.append(str(self.rowslist[index])[2:12])
+            rowlist.append(str(self.rowslist[index])[12:18])
+            rowlist.append(self.line[0])
+            rowlist.append("0")
+            rowlist.append(str(bought))
+            rowlist.append(str(self.rowslist[index][2]))
+            rowlist.append(str(sell_amount))
+            rowlist.append("2")
+            self.transactions_file.writerow(rowlist)
+
+
+            '''
+            self.transactions_file.writerow(str(self.rowslist[index])[2:12] +
+                                            str(self.rowslist[index])[12:18] +
+                                            self.line[0] + "0" + str(bought) + str(self.rowslist[index][2]) +
+                                            str(sell_amount) + "1")
+            '''
             return True
         return False
 
@@ -117,6 +179,24 @@ class OHL():
         self.sell_amount[-1] = bought * float(self.rowslist[index][1])
         self.sell_EOD[-1] = "1"
 
+        rowlist = []
+        rowlist.append(str(self.rowslist[index])[2:12])
+        rowlist.append(str(self.rowslist[index])[12:18])
+        rowlist.append(self.line[0])
+        rowlist.append("0")
+        rowlist.append(str(bought))
+        rowlist.append(str(self.rowslist[index][2]))
+        rowlist.append(sell_amount)
+        self.transactions_file.writerow(rowlist)
+        rowlist.append("3")
+
+
+    '''
+        self.transactions_file.writerow(str(self.rowslist[index])[2:12] +
+                                        str(self.rowslist[index])[12:18] +
+                                        self.line[0] + "0" + str(bought) + str(self.rowslist[index][2]) +
+                                        str(sell_amount) + "1")
+    '''
     def OHL(self):
         # Function for inmplementing strategy-daily closing higher
         ndays = 3
@@ -134,6 +214,10 @@ class OHL():
         # path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
 
         path_to_output_directory = "C:/Users/Rohit/Python_source_code/output/daily_closing_higher/"
+
+        output_transactions_filename = "transactions.csv"
+
+
         self.column_no_of_ticker = 0
         with open(path_to_stock_master_list, 'r') as f:
             self.lines = csv.reader(f)
@@ -347,10 +431,12 @@ def main():
     print(" Configuration for this run: " + "\n" + " deviation from previous close: " + str(deviation_from_prev_close) + "\n")
     print(" target price:" + str(target_price) + " stoploss: " + str(stop_loss) + "\n")
     print(" maximum capital for single purchase: " + str(max_capital_for_single_buy) + "\n")
-    print(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
-
+    print("Maximum days tto hold a position: " + str(max_ndays_scan)+ "\n")
     obj = OHL(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility, max_capital_for_single_buy,
               target_price, stop_loss, max_ndays_scan)
+    print(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
+
+
     obj.OHL()
 
 
