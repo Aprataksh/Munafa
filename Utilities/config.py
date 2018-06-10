@@ -7,6 +7,7 @@ class config():
             self.master_list = dictionary.get("path_to_master_list")
             self.output_dir = dictionary.get("path_to_output_dir")
             self.index_dir = dictionary.get("path_to_index_dir")
+            self.transaction_list = dictionary.get("path_to_transaction_list")
             self.sorted_list = dictionary.get("path_to_sorted_list")
             self.ledger_list = dictionary.get("path_to_ledger_list")
             self.ledger_log = dictionary.get("path_to_ledger_log")
