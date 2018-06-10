@@ -1,24 +1,37 @@
 import csv
 import math
+import logging
+from config import config
 import pandas as pd
 
 def get_ticker_list():
     ticker_list = []
-    #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
+    config_object = config("../config.txt")
+    path_to_stock_master_list = config_object.path_to_master_list()
     #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
-    path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
+    #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
     with open(path_to_stock_master_list, 'r') as f:
         lines = csv.reader(f)
         for line in lines:
             if "Symbol" not in line:
                 if '&' in line[2]:
+                    ''''modification required: mmodify the code to include the _ depending on the file name
+                    line[2] = line[2][:line[2].index('&')] + "_26" + line[2][line[2].index('&') + 1:]'''
                     line[2] = line[2][:line[2].index('&')] + "%26" + line[2][line[2].index('&') + 1:]
                 ticker_list.append(line[2])
         return ticker_list
 
 def drop_data(ticker):
+
     # directory path to the historical data. Ensure that there is a / at the end
-    path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
+    config_object = config("../config.txt")
+    path_to_historical_data = config_object.path_to_historical_5_min_dir()
+    path_to_output_dir = config_object.path_to_output_dir()
+
+    log_filename = "strategy_log.log"
+    log_format = "%(levelname)s - %(message)s"
+    logging.basicConfig(filename=path_to_output_dir+log_filename, level=logging.DEBUG, format=log_format, filemode="w")
+    logger = logging.getLogger()
 
     df = pd.read_csv(path_to_historical_data + ticker + ".csv")
 
@@ -47,18 +60,30 @@ def drop_data(ticker):
             index = date_data.index(date)
             break
     if index == 0:
-        print(ticker, " : no such date")
+        logger.info("No data on " + initial_data + " for " + ticker)
     else:
+        logger.info("Dropped data from " + initial_data + " for " + ticker)
         df = df.drop(df.index[[range(0,index)]])
     return df
 
 
 """Code to extract day data from the 5 minute data we have"""
-def get_daily_closing_high(no_of_days):
+def get_daily_closing_high(no_of_days, output_folder):
 
     strategy_ticker = []
     dates = []
     ticker_list = get_ticker_list()
+
+    """Config Object"""
+    config_object = config("../config.txt")
+    path_to_output_dir = config_object.path_to_output_dir() + output_folder
+    output_filename = "scanner_output.csv"
+    log_filename = "strategy_log.log"
+
+    """Logging Details"""
+    log_format = "%(levelname)s - %(message)s"
+    logging.basicConfig(filename=path_to_output_dir + log_filename, level=logging.DEBUG, format=log_format, filemode="w")
+    logger = logging.getLogger()
     for ticker in ticker_list:
         #Drops the data before the initial date
         df = drop_data(ticker)
@@ -120,22 +145,19 @@ def get_daily_closing_high(no_of_days):
                     dates.append([ticker, date_day[i+j-2], date_day[previous_day], date_day[current_day], date_day[i+j+1]])
             if c == no_of_days-1:
                 strategy_ticker.append(ticker)
-    """If just the tickers then"""
-    #return strategy_ticker, dates
-    """If tickers with dates are needed"""
-    #return dates
+
+
     if len(dates) == 0:
-        print("No company followed such strategy ")
+        logger.error("No companies followed this strategy")
     else:
         c = 1
         for i in range(0, len(dates) - 1):
             if dates[i][0] != dates[i + 1][0]:
                 c = c + 1
 
-        print("Strategy is followed by =", c, " companies\n")
-
+        logger.info("Strategy is followed by = " + str(c) + " companies")
         #rows = zip(strategy_ticker, dates)
-        with open("C:/Users/Rohit/Python_source_code/output/OHL/version2/daily_closing_higher_output.csv", 'w', newline = "") as f:
+        with open(path_to_output_dir + output_filename, 'w', newline="") as f:
             writer = csv.writer(f)
             for row in dates:
                 writer.writerow(row)
@@ -144,4 +166,5 @@ def get_daily_closing_high(no_of_days):
 
 def main():
     ndays = 3
-    get_daily_closing_high(ndays)
+    output_folder = "Strategy_daily_closing_higher/"
+    get_daily_closing_high(ndays, output_folder)
