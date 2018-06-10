@@ -4,6 +4,7 @@ import pandas as pd
 import sys
 sys.path.insert(0, r"..\utilities")
 from ledger import ledger
+import config
 import logging
 class transaction():
     def __init__(self, ptt ,ptll):
@@ -90,12 +91,19 @@ def main():
     # path_to_ledger_file = r"C:\Users\Hp\Desktop\New folder\ledger.csv"
     # path_to_ledger_log = r"C:\Users\Hp\Desktop\New folder\ledger.log"
 
-    path_to_transaction_list = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\transactions.csv"
-    path_to_sorted_data = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\sorted_transactions.csv"
-    path_to_ledger_file = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\ledger.csv"
-    path_to_ledger_log = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\ledger.log"
+    # path_to_transaction_list = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\transactions.csv"
+    # path_to_sorted_data = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\sorted_transactions.csv"
+    # path_to_ledger_file = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\ledger.csv"
+    # path_to_ledger_log = r"C:\Users\Rohit\Python_source_code\output\daily_closing_higher\ledger.log"
+
+    config_obj = config.config(r"../config.txt")
+    path_to_transaction_list = config_obj.path_to_transaction_list()
+    path_to_sorted_list = config_obj.path_to_sorted_list()
+    path_to_ledger_list = config_obj.path_to_ledger_list()
+    path_to_ledger_log = config_obj.path_to_ledger_log()
+
 
     obj = transaction(path_to_transaction_list, path_to_ledger_log)
-    obj.get_sorted_data(path_to_sorted_data)
-    obj.max_capital_required(path_to_sorted_data, path_to_ledger_file)
+    obj.get_sorted_data(path_to_sorted_list)
+    obj.max_capital_required(path_to_sorted_list, path_to_ledger_list)
 main()
