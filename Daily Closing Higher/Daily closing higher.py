@@ -4,7 +4,7 @@ import pandas as pd
 import logging
 sys.path.insert(0, r"..\utilities")
 import is_index_in_same_direction
-import strategy_daily_closing_high
+import scanner_daily_closing_high
 import config
 from transaction import transaction
 
@@ -47,6 +47,19 @@ class DCH():
         self.max_ndays_scan = mns
         tf = open(self.obj.path_to_output_dir() + "Daily_closing_higher/transactions.csv", 'w', newline="")
         self.transactions_file = csv.writer(tf)
+
+    def initialise_output_headers_row(self):
+        self.recorded_date = ["Date"]
+        self.day_open_price = ["Day Open"]
+        self.rejected_price = ["Rejected Price"]
+        self.rejected_volume = ["Rejected Volume"]
+        self.buy_amount = ["Purchase amount"]
+        self.sell_amount = ["Sell amount"]
+        self.index_in_same_direction = ["Index In Same Direction"]
+        self.sell_stop_loss = ["Sell Stop Loss"]
+        self.sell_EOD = ["Sell EOD"]
+        self.sell_met_target = ["Sell Met Target"]
+        self.buy_transaction = ["Buy"]
 
     def new_output_row(self):
         self.recorded_date.append("0")
@@ -191,23 +204,21 @@ class DCH():
     def DCH(self):
         # Function for inmplementing strategy-daily closing higher
 
-        """Folders needed"""
         """This is just for reference, the name of the folder is not used as variable throughout the program"""
         strategy_folder = "Daily_closing_higher/"
         ndays = 3
-        strategy_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
+        scanner_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
 
         # the list that contains the symbols for all the stocks that need to be downloaded
-        # path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
-        # path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
         path_to_stock_master_list = \
             self.obj.path_to_output_dir() + strategy_folder + "scanner_output.csv"
         # directory path to the historical data. Ensure that there is a / at the end
         path_to_historical_data = self.obj.path_to_historical_5_min_dir()
 
+        # path to the index file that contains the data for the corresponding index
         path_to_index_file = self.obj.path_to_index_dir() + "NIFTY.csv"
-        # path_to_index_file = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
 
+        # path to the output directory where the log, the transactions etc are printed
         path_to_output_directory = self.obj.path_to_output_dir() + strategy_folder
 
         self.path_to_transaction_file = path_to_output_directory + "transactions.csv"
@@ -218,7 +229,7 @@ class DCH():
             for self.line in self.lines:
                 if "Symbol" not in self.line:
                     if '&' in self.line[self.column_no_of_ticker]:
-                        ''''modification required: mmodify the code to include the _ depending on the file name
+                        ''''modification required: modify the code to include the _ depending on the file name
                         self.line[self.column_no_of_ticker] = self.line[self.column_no_of_ticker][
                                                               :self.line[self.column_no_of_ticker].index('&')] \
                                                               + "_26" + self.line[self.column_no_of_ticker][
@@ -231,26 +242,8 @@ class DCH():
                                                                             '&') + 1:]
 
                     with open(path_to_historical_data + self.line[self.column_no_of_ticker] + ".csv", 'r') as g:
-                        # re-initialise all the variables for the output columns as we have started reading a new stock
-                        '''
-                        self.recorded_date = []
-                        self.day_open_price = []
-                        self.rejected_price = []
-                        self.buy_amount = []
-                        self.sell_amount = []
-                        '''
-                        self.recorded_date = ["Date"]
-                        self.day_open_price = ["Day Open"]
-                        self.rejected_price = ["Rejected Price"]
-                        self.rejected_volume = ["Rejected Volume"]
-                        self.buy_amount = ["Purchase amount"]
-                        self.sell_amount = ["Sell amount"]
-                        self.index_in_same_direction = ["Index In Same Direction"]
-                        self.sell_stop_loss = ["Sell Stop Loss"]
-                        self.sell_EOD = ["Sell EOD"]
-                        self.sell_met_target = ["Sell Met Target"]
-                        self.buy_transaction = ["Buy"]
-
+                        # initialised the headers  for output
+                        self.initialise_output_headers_row()
                         self.logger.info("Stock = " + self.line[self.column_no_of_ticker] + "\n")
                         print('\n', self.line[self.column_no_of_ticker])
                         rows = csv.reader(g)

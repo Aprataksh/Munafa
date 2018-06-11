@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 sys.path.insert(0, r"..\utilities")
 import is_index_in_same_direction
-import strategy_daily_closing_high
+import scanner_daily_closing_high
 
 
 class OHL():
@@ -133,7 +133,7 @@ class OHL():
     def OHL(self):
         #Function for inmplementing strategy-daily closing higher
         ndays = 3
-        strategy_daily_closing_high.get_daily_closing_high(ndays)
+        scanner_daily_closing_high.get_daily_closing_high(ndays)
 
         # the list that contains the symbols for all the stocks that need to be downloaded
         #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
