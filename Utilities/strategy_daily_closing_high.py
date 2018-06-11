@@ -2,24 +2,10 @@ import csv
 import math
 import logging
 from config import config
+import sys
+sys.path.insert(0, "../Utilities")
+import get_ticker_list
 import pandas as pd
-
-def get_ticker_list():
-    ticker_list = []
-    config_object = config("../config.txt")
-    path_to_stock_master_list = config_object.path_to_master_list()
-    #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
-    #path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
-    with open(path_to_stock_master_list, 'r') as f:
-        lines = csv.reader(f)
-        for line in lines:
-            if "Symbol" not in line:
-                if '&' in line[2]:
-                    ''''modification required: mmodify the code to include the _ depending on the file name
-                    line[2] = line[2][:line[2].index('&')] + "_26" + line[2][line[2].index('&') + 1:]'''
-                    line[2] = line[2][:line[2].index('&')] + "%26" + line[2][line[2].index('&') + 1:]
-                ticker_list.append(line[2])
-        return ticker_list
 
 def drop_data(ticker):
 
@@ -72,11 +58,14 @@ def get_daily_closing_high(no_of_days, output_folder):
 
     strategy_ticker = []
     dates = []
-    ticker_list = get_ticker_list()
 
     """Config Object"""
     config_object = config("../config.txt")
     path_to_output_dir = config_object.path_to_output_dir() + output_folder
+
+    path_to_stock_masterlist = config_object.path_to_master_list()
+    ticker_list = get_ticker_list.get_ticker_list(path_to_stock_masterlist)
+
     output_filename = "scanner_output.csv"
     log_filename = "strategy_log.log"
 

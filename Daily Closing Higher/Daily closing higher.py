@@ -2,24 +2,14 @@ import csv
 import sys
 import pandas as pd
 import logging
-
 sys.path.insert(0, r"..\utilities")
 import is_index_in_same_direction
 import strategy_daily_closing_high
 import config
+from transaction import transaction
 
 
-class transaction():
-    def __init__(self, pttf):
-        self.path_to_transaction_file = pttf
-
-    def print_transaction_items(self, date, time, ticker, type, number, price, amount, sell_type):
-        with open(self.path_to_transaction_file, "a", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow([date, time, ticker, type, number, price, amount, sell_type])
-
-
-class OHL():
+class DCH():
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
     logging.basicConfig(filename=obj.path_to_output_dir() + "Daily_closing_higher/dch_log.Log", level=logging.DEBUG,
@@ -55,7 +45,7 @@ class OHL():
         self.recorded_date = []
         self.day_open_price = []
         self.max_ndays_scan = mns
-        tf = open(self.obj.path_to_output_dir() + "Daily_closing_higher/ddivide the corona.csv", 'w', newline="")
+        tf = open(self.obj.path_to_output_dir() + "Daily_closing_higher/transactions.csv", 'w', newline="")
         self.transactions_file = csv.writer(tf)
 
     def new_output_row(self):
@@ -198,21 +188,20 @@ class OHL():
                                         str(sell_amount) + "1")
     '''
 
-    def OHL(self):
+    def DCH(self):
         # Function for inmplementing strategy-daily closing higher
 
         """Folders needed"""
         """This is just for reference, the name of the folder is not used as variable throughout the program"""
-        scanner_folder = "Strategy_daily_closing_higher/"
         strategy_folder = "Daily_closing_higher/"
         ndays = 3
-        strategy_daily_closing_high.get_daily_closing_high(ndays, scanner_folder)
+        strategy_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
 
         # the list that contains the symbols for all the stocks that need to be downloaded
         # path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/modified_ind_nifty50list.csv"
         # path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/ind_niftyfmcglist.csv"
         path_to_stock_master_list = \
-            self.obj.path_to_output_dir() + scanner_folder + "scanner_output.csv"
+            self.obj.path_to_output_dir() + strategy_folder + "scanner_output.csv"
         # directory path to the historical data. Ensure that there is a / at the end
         path_to_historical_data = self.obj.path_to_historical_5_min_dir()
 
@@ -454,11 +443,11 @@ def main():
     logger.info(" target price:" + str(target_price) + " stoploss: " + str(stop_loss) + "\n")
     logger.info(" maximum capital for single purchase: " + str(max_capital_for_single_buy) + "\n")
     logger.info("Maximum days tto hold a position: " + str(max_ndays_scan) + "\n")
-    obj = OHL(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
+    obj = DCH(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
               target_price, stop_loss, max_ndays_scan)
     logger.info(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
-    obj.OHL()
+    obj.DCH()
 
 
 main()
