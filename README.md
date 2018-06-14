@@ -10,16 +10,23 @@ It also allows the user to back test the strategy on multiple time frames.
 Munafa also help the user to back test trading strategies to be implemented duringa particular period of the day.
 
 ## Prerequisites
-[Python 3.6] (https://www.python.org/downloads/release/python-360/)
+[Python 3.6](https://www.python.org/downloads/release/python-360/)
+
 [StockStats library](https://github.com/jealous/stockstats)
+
 Python Libraries
+
 Pandas
+
 datetime
+
 csv
 
 ## Team
 Aprataksh Anand 
+
 Aayushmaan Rajora
+
 Rohit
 
 
