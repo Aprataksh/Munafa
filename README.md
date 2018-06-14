@@ -14,7 +14,7 @@ Munafa also help the user to back test trading strategies to be implemented duri
 
 [StockStats library](https://github.com/jealous/stockstats)
 
-###Python Libraries
+### Python Libraries
 
 Pandas
 
