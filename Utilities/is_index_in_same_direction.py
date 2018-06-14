@@ -1,48 +1,59 @@
 import pandas as pd
 import csv
 import datetime
+import logging
+import config
 
-def is_index_in_same_direction(path_to_index, direction, final_date):
-    data = pd.read_csv(path_to_index)
+def is_index_in_same_direction(path_to_index_file, direction, final_date_time):
+
+    config_object = config.config("../config.txt")
+    path_to_output_dir = config_object.path_to_output_dir()
+
+    log_filename = "index.log"
+    log_format = "%(levelname)s - %(message)s"
+    logging.basicConfig(filename= path_to_output_dir + log_filename, level=logging.DEBUG, format=log_format,
+                        filemode="w")
+    logger = logging.getLogger()
+
+    data = pd.read_csv(path_to_index_file)
     date_data = data['Date Time'].tolist()
-    index = 0
-    for date in date_data:
-        if final_date in date:
-            index = date_data.index(date)
+    final_date = final_date_time[:10]
+    found = 0
+    initial_index = 0
+    for index in range(len(date_data)):
+        if final_date == date_data[index][:10]:
+            initial_index = index
+            found = 1
             break
-    if index == 0:
-        print("is_index_in_same_direction: no such date: " + str(final_date))
+    if found == 0:
+        logger.info("is_index_in_same_direction: no such date: " + str(final_date_time))
         return False
     else:
-        open_price = data['Close'][index]
-        while True:
-            index = index + 1
-            if final_date + " 10:00:00" in date_data[index]:
+        open_price = data['Close'][initial_index]
+        index = initial_index
+        found = 0
+        while index < len(date_data):
+            if final_date_time in date_data[index]:
+                found = 1
                 close_price = data['Close'][index]
-                print("Date: " + date + " Index Close price: " + str(close_price) + " Index Open price: " + str(open_price) + "\n")
+                logger.info("Date: " + final_date_time + " Index Close price: " + str(close_price) + " Index Open price: " + str(open_price) + "\n")
                 if direction == 1:
-                    if (close_price > open_price):
+                    if close_price >= open_price:
                         return True
                     else:
-                        print("Date: " + date + " Index not in the same direction")
+                        logger.info("Date: " + final_date_time + " Index not in the same direction")
                         return False
                 else:
-                    if (close_price <  open_price):
+                    if close_price < open_price:
                         return True
                     else:
-                        print("Date: " + date + " Index not in the same direction")
+                        logger.info("Date: " + final_date_time + " Index not in the same direction")
                         return False
-            if final_date not in date_data[index]:
-                print("Moved to next date")
-                break
-
-'''
+            index = index + 1
+        if found == 0:
+            logger("No index data for " + final_date_time)
 def main():
-    #df = pd.read_csv(r"C:/Users/Hp/Desktop/New folder/Top500_stock/Date Time Data/" + "3MINDIA" + ".csv")
-    path_to_index = "C:/Users/Rohit/Python_source_code/historical_indices_5_min_data/CNXFMCG.csv"
-    final_date = "2018-05-25"
+    final_date = "2018-05-25 10:30"
     direction = 1
-    val = is_index_in_same_direction(path_to_index, direction, final_date)
+    val = is_index_in_same_direction("NIFTY.csv", direction, final_date)
     print("Return = " + str(val))
-main()
-'''

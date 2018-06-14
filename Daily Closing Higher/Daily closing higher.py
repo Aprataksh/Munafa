@@ -190,7 +190,7 @@ class DCH():
         print_object = transaction(self.path_to_transaction_file)
         date = str(self.rowslist[index])[2:12]
         time = str(self.rowslist[index])[12:18]
-        print_object.print_transaction_items(date, time, self.line[0], "0", str(bought), "0",
+        print_object.print_transaction_items(date, time, self.line[0], "0", str(bought),
                                              str(self.rowslist[index][2]),
                                              str(self.sell_amount[-1]), "3")
 
@@ -206,7 +206,7 @@ class DCH():
 
         """This is just for reference, the name of the folder is not used as variable throughout the program"""
         strategy_folder = "Daily_closing_higher/"
-        ndays = 3
+        ndays = 2
         scanner_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
 
         # the list that contains the symbols for all the stocks that need to be downloaded
@@ -337,11 +337,8 @@ class DCH():
                                 if abs(prev_close_price - current_price) \
                                         < abs(self.deviation_from_prev_close * prev_close_price):
                                     # ... and the corresponding index is also increasing
-                                    '''
                                     if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1,
-                                                                                             date) \
-                                    '''
-                                    if True:
+                                                                                             str(self.rowslist[index][0])):
                                         # ... simulate the buying of stocks
 
                                         # 1. if there are more than one transactions, initialise a new row for output
@@ -417,14 +414,14 @@ class DCH():
 
 
 def main():
-    deviation_from_prev_close = 0.02
+    deviation_from_prev_close = 0.002
     max_price_volatility = 100
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.01
+    target_price = 0.015
     # the stoploss needs to be negative.
-    stop_loss = -0.005
+    stop_loss = -0.008
     max_ndays_scan = 3
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
