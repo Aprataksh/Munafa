@@ -11,12 +11,12 @@ def drop_data(ticker):
 
     # directory path to the historical data. Ensure that there is a / at the end
     config_object = config("../config.txt")
-    path_to_historical_data = config_object.path_to_historical_5_min_dir()
+    path_to_historical_data = config_object.path_to_historical_1_day_dir()
     path_to_output_dir = config_object.path_to_output_dir()
 
     log_filename = "strategy_log.log"
     log_format = "%(levelname)s - %(message)s"
-    logging.basicConfig(filename=path_to_output_dir+log_filename, level=logging.DEBUG, format=log_format, filemode="w")
+    logging.basicConfig(filename=path_to_output_dir + log_filename, level=logging.DEBUG, format=log_format, filemode="w")
     logger = logging.getLogger()
 
     df = pd.read_csv(path_to_historical_data + ticker + ".csv")
@@ -39,7 +39,8 @@ def drop_data(ticker):
     df['Open'] = df['Open'].astype(float)
     df['Low'] = df['Low'].astype(float)
 
-    initial_data = "2018-03-13"
+    initial_data = "2018-04-03"
+    logger.info("scanning for daily closing higher from date: " + initial_data)
     index = 0
     for date in date_data:
         if initial_data in date:
@@ -79,40 +80,11 @@ def get_daily_closing_high(no_of_days, output_folder):
 
         """List containing 5-min data"""
 
-        date_data = df['Date Time'].tolist()
-        close_data = df['Close'].tolist()
-        open_data = df['Open'].tolist()
-        low_data = df['Low'].tolist()
+        date_day = df['Date Time'].tolist()
+        close_day = df['Close'].tolist()
+        open_day = df['Open'].tolist()
+        low_day = df['Low'].tolist()
 
-        """Code for the conversion of 5-min data to 1-day data"""
-
-        open_day = []
-        close_day = []
-        date_day = []
-        low_day = []
-
-        open_day.append(open_data[0])
-        date_day.append(date_data[0][:10])
-        start_index = 0
-        for i in range(0, len(date_data)-1):
-            date = date_data[i][:10]
-            next_date = date_data[i+1][:10]
-            min = low_data[start_index]
-            if date != next_date:
-                end_index = i
-                for j in low_data[start_index:end_index+1]:
-                    if j < min:
-                        min = j
-                start_index = i+1
-                low_day.append(min)
-                close_day.append(close_data[i])
-                open_day.append(open_data[i+1])
-                date_day.append(date_data[i+1][:10])
-        for j in low_data[start_index:]:
-            if j < min:
-                min = j
-        low_day.append(min)
-        close_day.append(close_data[-1])
 
         """Code to implement the stock trading strateg"""
         for i in range(1,len(date_day)-no_of_days+1):
@@ -131,7 +103,8 @@ def get_daily_closing_high(no_of_days, output_folder):
                             and float(low_day[current_day]) > float(open_day[previous_day]) :
                         c += 1
                 if c == no_of_days-1:
-                    dates.append([ticker, date_day[i+j-2], date_day[previous_day], date_day[current_day], date_day[i+j+1]])
+                    dates.append([ticker, date_day[i+j-2][:10], date_day[previous_day][:10], date_day[current_day][:10],
+                                  date_day[i+j+1][:10]])
             if c == no_of_days-1:
                 strategy_ticker.append(ticker)
 
@@ -145,15 +118,13 @@ def get_daily_closing_high(no_of_days, output_folder):
                 c = c + 1
 
         logger.info("Strategy is followed by = " + str(c) + " companies")
-        #rows = zip(strategy_ticker, dates)
         with open(path_to_output_dir + output_filename, 'w', newline="") as f:
             writer = csv.writer(f)
             for row in dates:
                 writer.writerow(row)
 
 
-
 def main():
     ndays = 3
-    output_folder = "Strategy_daily_closing_higher/"
+    output_folder = "Check/"
     get_daily_closing_high(ndays, output_folder)
