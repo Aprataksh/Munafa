@@ -6,6 +6,7 @@ sys.path.insert(0, r"..\utilities")
 import is_index_in_same_direction
 import scanner_daily_closing_high
 import config
+from config import brokerage
 from transaction import transaction
 
 
@@ -32,8 +33,13 @@ class DCH():
     c_total_stoploss = 0
     c_overall_buy_trans = 0
     column_no_of_ticker = 0
+    datetime_column = 0
+    close_column = 0
+    high_column = 0
+    open_column = 0
+    overall_sell_with_brokerage = 0.0
+    overall_c_intraday = 0
 
-    # column_no_of_ticker = 2
     def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns):
         self.deviation_from_prev_close = dfpc
         self.max_price_volatility = mpv
@@ -55,6 +61,7 @@ class DCH():
         self.rejected_volume = ["Rejected Volume"]
         self.buy_amount = ["Purchase amount"]
         self.sell_amount = ["Sell amount"]
+        self.sell_with_brokerage = ["Sell with brokerage"]
         self.index_in_same_direction = ["Index In Same Direction"]
         self.sell_stop_loss = ["Sell Stop Loss"]
         self.sell_EOD = ["Sell EOD"]
@@ -73,9 +80,9 @@ class DCH():
         self.sell_met_target.append("0")
         self.rejected_price.append("0")
         self.rejected_volume.append("0")
+        self.sell_with_brokerage.append("0")
 
     def buy_stocks(self, purchase_cost, index_close):
-
         bought = int(self.max_capital_for_single_buy / purchase_cost)
         if bought != 0:
             actual_cost = (bought * purchase_cost)
@@ -85,16 +92,16 @@ class DCH():
             self.c_overall_buy_trans = self.c_overall_buy_trans + 1
             self.c_transactions_today = self.c_transactions_today + 1
             self.buy_amount[-1] = str(actual_cost)
-            self.logger.info("Stock " + self.line[0] + " bought " + str(bought) + " shares at " + str(
-                purchase_cost) + " price at date " + str(self.rowslist[index_close])[2:12] + " at time " + str(
-                self.rowslist[index_close])[12:18] + "\n")
+            self.logger.info("Stock " + self.line[self.column_no_of_ticker] + " bought " + str(bought) + " shares at "
+                             + str(purchase_cost) + " price at date " + str(self.rowslist[index_close])[2:12] +
+                             " at time " + str(self.rowslist[index_close])[12:18] + "\n")
 
             """Use of Transaction Class"""
             date = str(self.rowslist[index_close])[2:12]
             time = str(self.rowslist[index_close])[12:18]
             print_object = transaction(self.path_to_transaction_file)
-            print_object.print_transaction_items(date, time, self.line[0], "1", str(bought), str(purchase_cost),
-                                                 str(actual_cost), "0")
+            print_object.print_transaction_items(date, time, self.line[self.column_no_of_ticker], "1",
+                                                 str(bought), str(purchase_cost), str(actual_cost), "0")
 
             '''
             self.transactions_file.writerow(str(self.rowslist[index_close])[2:12] +  str(self.rowslist[index_close])[12:18] +
@@ -107,28 +114,47 @@ class DCH():
                                                                                     2:12] + " due to insufficient daily stock fund\n")
         return bought
 
-    def sell_stock_due_to_price_check(self, bought, close_price, index):
-        per = (float(self.rowslist[index][2]) - close_price) / close_price
+
+    def sell_stock_due_to_price_check(self, bought, purchase_price, purchase_date, index):
+        current_close_price = float(self.rowslist[index][self.close_column])
+        per = (current_close_price - purchase_price) / purchase_price
         if per >= self.target_price:
-            sell_amount = bought * float(self.rowslist[index][2])
+            sell_amount = bought * current_close_price
             self.total_sell = self.total_sell + sell_amount
             self.overall_sell = self.overall_sell + sell_amount
             self.total_sold += bought
-            self.logger.info("Stock " + self.line[0] + " sold " + str(bought) + " shares at " + self.rowslist[index][
-                2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[
-                                                                                         13:18] + "\n")
+            sell_with_brokerage = 0.0
+            brokerage_object = brokerage()
+            if (purchase_date != self.rowslist[index][self.datetime_column][:10]):
+                brokerage_fee = brokerage_object.calculate_delivery_brokerage(sell_amount)
+                sell_with_brokerage = sell_amount - brokerage_fee
+                self.logger.info("Delivery Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: "
+                                 + str(sell_with_brokerage) + " Brokerage fee: " + str(brokerage_fee))
+            else:
+                brokerage_fee = brokerage_object.calculate_intraday_brokerage(sell_amount)
+                sell_with_brokerage = sell_amount - brokerage_fee
+                self.logger.info("Intraday Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: "
+                                 + str(sell_with_brokerage) + " Brokerage fee: " + str(brokerage_fee))
+                self.overall_c_intraday = self.overall_c_intraday + 1
+
+            self.overall_sell_with_brokerage = self.overall_sell_with_brokerage + sell_with_brokerage
+
+            self.logger.info("Stock " + self.line[self.column_no_of_ticker] + " sold " + str(bought) + " shares at "
+                             + str(current_close_price) + " price at date " + str(self.rowslist[index])[2:12] +
+                             " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_wins = self.overall_c_wins + 1
             self.c_total_wins = self.c_total_wins + 1
             # the last element has already been initialised to  0.  modify it to the sold amount
-            self.sell_amount[-1] = bought * float(self.rowslist[index][2])
+            self.sell_with_brokerage[-1] = sell_with_brokerage
+            self.sell_amount[-1] = sell_amount
             self.sell_met_target[-1] = "1"
 
             """Use of Transaction Class"""
             date = str(self.rowslist[index])[2:12]
             time = str(self.rowslist[index])[12:18]
             print_object = transaction(self.path_to_transaction_file)
-            print_object.print_transaction_items(date, time, self.line[0], "0", str(bought),
-                                                 str(self.rowslist[index][2]),
+            print_object.print_transaction_items(date, time, self.line[self.column_no_of_ticker], "0", str(bought),
+                                                 str(current_close_price),
                                                  str(sell_amount), "1")
 
             '''
@@ -140,30 +166,46 @@ class DCH():
             return True
         return False
 
-    def sell_stock_due_to_stop_loss(self, bought, close_price, index):
-        per = (float(self.rowslist[index][2]) - close_price) / close_price
+    def sell_stock_due_to_stop_loss(self, bought, purchase_price, purchase_date, index):
+        current_close_price = float(self.rowslist[index][self.close_column])
+        per = (current_close_price - purchase_price) / purchase_price
         if per <= self.stop_loss:
-            sell_amount = bought * float(self.rowslist[index][2])
+            sell_amount = bought * current_close_price
             self.total_sell = self.total_sell + sell_amount
             self.overall_sell = self.overall_sell + sell_amount
             self.total_sold += bought
+            sell_with_brokerage = 0.0
+            brokerage_object = brokerage()
+            if (purchase_date != self.rowslist[index][self.datetime_column][:10]):
+                brokerage_fee = brokerage_object.calculate_delivery_brokerage(sell_amount)
+                sell_with_brokerage = sell_amount - brokerage_fee
+                self.logger.info("Delivery Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: "
+                                 + str(sell_with_brokerage) + " Brokerage fee: " + str(brokerage_fee))
+            else:
+                brokerage_fee = brokerage_object.calculate_intraday_brokerage(sell_amount)
+                sell_with_brokerage = sell_amount - brokerage_fee
+                self.logger.info("Intraday Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: "
+                                 + str(sell_with_brokerage) + " Brokerage fee: " + str(brokerage_fee))
+                self.overall_c_intraday = self.overall_c_intraday + 1
+
+            self.overall_sell_with_brokerage = self.overall_sell_with_brokerage + sell_with_brokerage
+
             self.logger.info(
-                "Stop Loss Sale: Stock " + self.line[0] + " sold " + str(bought) + " shares at " + self.rowslist[index][
-                    2] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[
-                                                                                             13:18] + "\n")
+                "Stop Loss Sale: Stock " + self.line[self.column_no_of_ticker] + " sold " + str(bought) +
+                " shares at " + str(current_close_price) + " price at date " + str(self.rowslist[index])[2:12]
+                + " at time " + str(self.rowslist[index])[13:18] + "\n")
             self.overall_c_stoploss = self.overall_c_stoploss + 1
             self.c_total_stoploss = self.c_total_stoploss + 1
             # the last element has already been initialised to  0.  modify it to the sold amount
-            self.sell_amount[-1] = bought * float(self.rowslist[index][2])
+            self.sell_amount[-1] = sell_amount
             self.sell_stop_loss[-1] = "1"
 
             """Use of Transaction Class"""
             date = str(self.rowslist[index])[2:12]
             time = str(self.rowslist[index])[12:18]
             print_object = transaction(self.path_to_transaction_file)
-            print_object.print_transaction_items(date, time, self.line[0], "0", str(bought),
-                                                 str(self.rowslist[index][2]),
-                                                 str(sell_amount), "2")
+            print_object.print_transaction_items(date, time, self.line[self.column_no_of_ticker], "0", str(bought),
+                                                 str(current_close_price), str(sell_amount), "2")
 
             '''
             self.transactions_file.writerow(str(self.rowslist[index])[2:12] +
@@ -174,24 +216,42 @@ class DCH():
             return True
         return False
 
-    def sell_stock_at_end_of_day(self, bought, close_price, index):
+    def sell_stock_at_end_of_day(self, bought, purchase_price, purchase_date,  index):
+        current_close_price = float(self.rowslist[index][self.close_column])
+        sell_amount = bought * current_close_price
         self.total_sold += bought
-        self.total_sell = self.total_sell + bought * float(self.rowslist[index][1])
-        self.overall_sell = self.overall_sell + bought * float(self.rowslist[index][1])
-        self.logger.info("Stock " + self.line[0] + " sold " + str(bought) + " shares at " + self.rowslist[index][
-            1] + " price at date " + str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[
-                                                                                     13:18] + "\n")
+        self.total_sell = self.total_sell + sell_amount
+        self.overall_sell = self.overall_sell + sell_amount
+        sell_with_brokerage = 0.0
+        brokerage_object = brokerage()
+        if (purchase_date != self.rowslist[index][self.datetime_column][:10]):
+            brokerage_fee = brokerage_object.calculate_delivery_brokerage(sell_amount)
+            sell_with_brokerage = sell_amount - brokerage_fee
+            self.logger.info("Delivery Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: "
+                             + str(sell_with_brokerage) + " Brokerage fee: " + str(brokerage_fee))
+        else:
+            brokerage_fee = brokerage_object.calculate_intraday_brokerage(sell_amount)
+            sell_with_brokerage = sell_amount - brokerage_fee
+            self.logger.info("Intraday Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: "
+                             + str(sell_with_brokerage) + " Brokerage fee: " + str(brokerage_fee))
+            self.overall_c_intraday = self.overall_c_intraday + 1
+
+        self.overall_sell_with_brokerage = self.overall_sell_with_brokerage + sell_with_brokerage
+
+        self.logger.info("Stock " + self.line[self.column_no_of_ticker] + " sold " + str(bought) +
+                         " shares at " + str(current_close_price) + " price at date " + str(self.rowslist[index])[2:12]
+                         + " at time " + str(self.rowslist[index])[13:18] + "\n")
         self.overall_c_sellEod = self.overall_c_sellEod + 1
         self.c_total_sellEOD = self.c_total_sellEOD + 1
         # the last element has already been initialised to  0.  modify it to the sold amount
-        self.sell_amount[-1] = bought * float(self.rowslist[index][1])
+        self.sell_amount[-1] = sell_amount
         self.sell_EOD[-1] = "1"
 
         print_object = transaction(self.path_to_transaction_file)
         date = str(self.rowslist[index])[2:12]
         time = str(self.rowslist[index])[12:18]
-        print_object.print_transaction_items(date, time, self.line[0], "0", str(bought),
-                                             str(self.rowslist[index][2]),
+        print_object.print_transaction_items(date, time, self.line[self.column_no_of_ticker], "0", str(bought),
+                                             str(current_close_price),
                                              str(self.sell_amount[-1]), "3")
 
     '''
@@ -207,6 +267,7 @@ class DCH():
         """This is just for reference, the name of the folder is not used as variable throughout the program"""
         strategy_folder = "Daily_closing_higher/"
         ndays = 2
+        self.logger.info("number of days to scan for daily closing higher: " + str(ndays) + "\n\n")
         scanner_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
 
         # the list that contains the symbols for all the stocks that need to be downloaded
@@ -223,7 +284,15 @@ class DCH():
 
         self.path_to_transaction_file = path_to_output_directory + "transactions.csv"
 
-        self.column_no_of_ticker = 0
+        """Column Object and getting columns"""
+        col_object = config.col_num("../config.txt")
+
+        self.column_no_of_ticker = col_object.get_scanner_ticker_col()
+        self.datetime_column = col_object.get_datetime_col()
+        self.close_column = col_object.get_close_col()
+        self.high_column = col_object.get_high_col()
+        self.open_column = col_object.get_open_col()
+
         with open(path_to_stock_master_list, 'r') as f:
             self.lines = csv.reader(f)
             for self.line in self.lines:
@@ -262,7 +331,10 @@ class DCH():
                         # previous algorithm ( in this case the daily closing higher which
                         # selects the ticker symbol and the date for which the ticker symbol needs to be scanned
                         for row in self.rowslist:
-                            if str(self.line[ndays + 1]) == str(row[0])[:10]:
+                            # if we are looking for 2 days that the stock must close higher, then compare
+                            # the date in the 2 + 1 column to the date in the row  to see if they match
+                            # TODO : https://github.com/Aprataksh/Munafa/issues/8
+                            if str(self.line[ndays + 1]) == str(row[self.datetime_column])[:10]:
                                 index = self.rowslist.index(row)
 
                                 # found the date for a particular stock from which we have to scan
@@ -291,22 +363,24 @@ class DCH():
                         # for that date
                         while 'Close' in self.rowslist[index - i]:
                             i = i + 1
-                        prev_close_price = float(self.rowslist[index - i][1])
+                        prev_close_price = float(self.rowslist[index - i][self.close_column])
 
-                        date = str(self.rowslist[index][0])[:10]
-                        prev_day_date = str(self.rowslist[index - i][0])[:10]
+                        date = str(self.rowslist[index][self.datetime_column])[:10]
+                        prev_day_date = str(self.rowslist[index - i][self.datetime_column])[:10]
 
                         # unexpected condition:  we expect the previous road to always have a different date (TODO:
                         # tighten the condition by testing that it should be before the current date)
                         if (prev_day_date == date):
-                            self.logger.critical("Data is corrupted")
+                            self.logger.critical("Data is corrupted OR the data files to not have the same duration")
+                            self.logger.critical("Moving to the next stock...")
+                            continue
 
                         index_open = index
-                        open_price = float(self.rowslist[index][4])
+                        open_price = float(self.rowslist[index][self.open_column])
                         # print(open_price)
                         self.day_open_price[-1] = str(open_price)
                         do_not_buy = 0
-
+                        purchase_date = date[:10]
                         c = 0
                         # initial value of index
                         # = index of the row with the first occurrence of the date from which we have to scan
@@ -355,20 +429,20 @@ class DCH():
                                         purchase_price = current_price
 
                             if bought != 0:
-                                if self.sell_stock_due_to_price_check(bought, purchase_price, index):
+                                if self.sell_stock_due_to_price_check(bought, purchase_price, purchase_date, index):
                                     bought = 0
                                     ndays_scanned = 0
                             if bought != 0:
-                                if self.sell_stock_due_to_stop_loss(bought, purchase_price, index):
+                                if self.sell_stock_due_to_stop_loss(bought, purchase_price, purchase_date, index):
                                     bought = 0
                                     ndays_scanned = 0
                             '''        
                             print("ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
                                 self.max_ndays_scan) + "\n" + "bought: " + str(bought) + "\n" + str(self.rowslist[index]))
                             '''
-                            if (ndays_scanned == self.max_ndays_scan) or (index == len(self.rowslist)):
-                                if "15:30" in self.rowslist[index][0] and bought != 0:
-                                    self.sell_stock_at_end_of_day(bought, purchase_price, index)
+                            if (ndays_scanned == self.max_ndays_scan) or (index == len(self.rowslist) - 1):
+                                if config.config.trading_closing_time in self.rowslist[index][0] and bought != 0:
+                                    self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, index)
                                     bought = 0
                                     ndays_scanned = 0
 
@@ -391,6 +465,7 @@ class DCH():
                                          str(self.c_total_sellEOD) + " Stop Loss = " + str(
                             self.c_total_stoploss) + "\n")
 
+
                         rows = zip(self.recorded_date, self.day_open_price, self.buy_amount, self.sell_amount,
                                    self.buy_transaction, self.sell_met_target, self.sell_EOD, self.sell_stop_loss)
 
@@ -400,17 +475,26 @@ class DCH():
                             for row in rows:
                                 writer.writerow(row)
                             f.close()
+
+        overall_profit = (self.overall_sell - self.overall_cost) / (self.overall_cost) * 100
         self.logger.info(
             "Total purchases = " + str(self.total_purchased) + " total sold = " + str(self.total_sold) + "\n")
         self.logger.info(
-            "Overall cost = " + str(self.overall_cost) + " Overall sell = " + str(self.overall_sell) + "\n")
+            "Overall cost = " + str(self.overall_cost) + " Overall sell = " + str(self.overall_sell) +
+            " Overall sell with brokerage = " + str(self.overall_sell_with_brokerage) + "\n")
         self.logger.info("Overall profit = " + str(self.overall_sell - self.overall_cost)
-                         + " Overall Profit % = " + str(
-            (self.overall_sell - self.overall_cost) / (self.overall_cost) * 100) + "\n")
+                         + " Overall Profit % = " + str(overall_profit) + "\n")
         self.logger.info(
             "Overall buys = " + str(self.c_overall_buy_trans) + " Overall wins = " + str(self.overall_c_wins) +
             " Overall sell EOD = " + str(self.overall_c_sellEod) + " Overall stoploss = " + str(
                 self.overall_c_stoploss) + "\n")
+        percentage_wins = (self.overall_c_wins/self.c_overall_buy_trans) * 100
+        profit_after_brokerage = self.overall_sell_with_brokerage - self.overall_cost
+        percentage_intraday = \
+            (self.overall_c_intraday/(self.overall_c_wins + self.overall_c_stoploss + self.overall_c_sellEod)) * 100
+        self.logger.info("Percentage wins: " + str(percentage_wins) + "  profit after brokerage: " +
+                         str(profit_after_brokerage) + " Intraday sales " + str(self.overall_c_intraday)
+                         + " Intraday percentage " + str(percentage_intraday) + "\n")
 
 
 def main():
