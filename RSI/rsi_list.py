@@ -25,14 +25,14 @@ class RSI:
                 if 'Close' not in line:
                     times.append(line[0])
                     rows.append(map(float,line[1:]))
-            df = pd.DataFrame(rows, columns=columns)
+            df = pd.DataFrame(rows,index=pd.DatetimeIndex(times, name='Date Time'),columns=columns)
             stock_df = Sdf.retype(df)
             rsi_text="rsi_"+str(self.period)
             df['rsi'] = stock_df[rsi_text]
             rsi=list(df['rsi'])
             rsi_df=pd.DataFrame(rsi,index=pd.DatetimeIndex(times, name='Date Time'),columns=['RSI'])
             #print(rsi_df)
-            rsi_df.to_csv(self.obj.path_to_output_dir() + self.ticker + "_rsi.csv")
+            rsi_df.to_csv(self.obj.path_to_output_dir()+"RSI/" + self.ticker + "_rsi.csv")
             #plt.plot(rsi_df['RSI'],color='red')
             #plt.show()
 
