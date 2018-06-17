@@ -11,6 +11,7 @@ class config():
             self.sorted_list = dictionary.get("path_to_sorted_list")
             self.ledger_list = dictionary.get("path_to_ledger_list")
             self.ledger_log = dictionary.get("path_to_ledger_log")
+            self.historical_1_day_dir = dictionary.get("path_to_historical_1_day_dir")
 
     def path_to_historical_5_min_dir(self):
         return self.historical_5_dir
@@ -28,7 +29,8 @@ class config():
         return self.ledger_list
     def path_to_ledger_log(self):
         return self.ledger_log
-
+    def path_to_historical_1_day_dir(self):
+        return self.historical_1_day_dir
 def main():
     path_to_config_file = r"../config.txt"
     obj = config()

@@ -4,6 +4,7 @@ import pandas as pd
 import logging
 sys.path.insert(0, r"..\utilities")
 import is_index_in_same_direction
+import MACD_file
 import scanner_daily_closing_high
 import config
 from transaction import transaction
@@ -12,7 +13,7 @@ from transaction import transaction
 class DCH():
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
-    logging.basicConfig(filename=obj.path_to_output_dir() + "Daily_closing_higher/dch_log.Log", level=logging.DEBUG,
+    logging.basicConfig(filename=obj.path_to_output_dir() + "MACD daily closing higher/dch_log.Log", level=logging.DEBUG,
                         format=LOG_FORMAT, filemode='w')
     logger = logging.getLogger()
 
@@ -45,7 +46,7 @@ class DCH():
         self.recorded_date = []
         self.day_open_price = []
         self.max_ndays_scan = mns
-        tf = open(self.obj.path_to_output_dir() + "Daily_closing_higher/transactions.csv", 'w', newline="")
+        tf = open(self.obj.path_to_output_dir() + "MACD daily closing higher/transactions.csv", 'w', newline="")
         self.transactions_file = csv.writer(tf)
 
     def initialise_output_headers_row(self):
@@ -205,8 +206,10 @@ class DCH():
         # Function for inmplementing strategy-daily closing higher
 
         """This is just for reference, the name of the folder is not used as variable throughout the program"""
-        strategy_folder = "Daily_closing_higher/"
+        strategy_folder = "MACD daily closing higher/"
         ndays = 2
+        logger = logging.getLogger()
+        logger.info(" maximum number of days for the scanner: " + str(ndays) + "\n")
         scanner_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
 
         # the list that contains the symbols for all the stocks that need to be downloaded
@@ -240,7 +243,7 @@ class DCH():
                                                               + "%26" + self.line[self.column_no_of_ticker][
                                                                         self.line[self.column_no_of_ticker].index(
                                                                             '&') + 1:]
-
+                    macd_list, signal_list = MACD_file.macd_crossover(self.line[self.column_no_of_ticker])
                     with open(path_to_historical_data + self.line[self.column_no_of_ticker] + ".csv", 'r') as g:
                         # initialised the headers  for output
                         self.initialise_output_headers_row()
@@ -334,11 +337,19 @@ class DCH():
                             # if no stocks have been bought as yet...
                             if bought == 0 and do_not_buy == 0:
                                 # ... and the current price is near the closing price of the previous day
-                                if abs(prev_close_price - current_price) \
-                                        < abs(self.deviation_from_prev_close * prev_close_price):
+                                if macd_list[index - 1] > signal_list[index - 1] and macd_list[index - 1 - i] < \
+                                        signal_list[index - 1 - i]:
+                                    self.logger.info("Crossed Above Signal Line: Before - MACD = " + str(macd_list[index - 1 - i]) +
+                                          " SIGNAL = " + str(signal_list[index - 1 - i]) +
+                                          " Now - MACD = " + str(macd_list[index - 1]) + " SIGNAL = " + str(signal_list[index - 1]))
+                                    self.logger.info("Current Value = " + str(self.rowslist[index]))
+                                    self.logger.info("Previous Values = " + str(self.rowslist[index - i]))
                                     # ... and the corresponding index is also increasing
+                                    '''
                                     if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1,
-                                                                                             str(self.rowslist[index][0])):
+                                                                                             date) \
+                                    '''
+                                    if True:
                                         # ... simulate the buying of stocks
 
                                         # 1. if there are more than one transactions, initialise a new row for output
@@ -366,7 +377,7 @@ class DCH():
                             print("ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
                                 self.max_ndays_scan) + "\n" + "bought: " + str(bought) + "\n" + str(self.rowslist[index]))
                             '''
-                            if (ndays_scanned == self.max_ndays_scan) or (index == len(self.rowslist)):
+                            if (ndays_scanned == self.max_ndays_scan) or (index == len(self.rowslist)-1):
                                 if "15:30" in self.rowslist[index][0] and bought != 0:
                                     self.sell_stock_at_end_of_day(bought, purchase_price, index)
                                     bought = 0
@@ -414,29 +425,29 @@ class DCH():
 
 
 def main():
-    deviation_from_prev_close = 0.002
+    deviation_from_prev_close = 0.02
     max_price_volatility = 100
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.015
+    target_price = 0.01
     # the stoploss needs to be negative.
-    stop_loss = -0.008
+    stop_loss = -0.005
     max_ndays_scan = 3
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
-    logging.basicConfig(filename=obj.path_to_output_dir() + "Daily_closing_higher/dch_log.Log", level=logging.DEBUG,
+    logging.basicConfig(filename=obj.path_to_output_dir() + "MACD daily closing higher/dch_log.Log", level=logging.DEBUG,
                         format=LOG_FORMAT, filemode='w')
     logger = logging.getLogger()
     logger.info(" Configuration for this run: " + "\n" + " deviation from previous close: " + str(
         deviation_from_prev_close) + "\n")
     logger.info(" target price:" + str(target_price) + " stoploss: " + str(stop_loss) + "\n")
     logger.info(" maximum capital for single purchase: " + str(max_capital_for_single_buy) + "\n")
-    logger.info("Maximum days tto hold a position: " + str(max_ndays_scan) + "\n")
+    logger.info("Maximum days to hold a position: " + str(max_ndays_scan) + "\n")
     obj = DCH(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
               target_price, stop_loss, max_ndays_scan)
-    logger.info(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
+
     obj.DCH()
 
 

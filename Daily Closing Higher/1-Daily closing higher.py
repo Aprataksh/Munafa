@@ -337,8 +337,11 @@ class DCH():
                                 if abs(prev_close_price - current_price) \
                                         < abs(self.deviation_from_prev_close * prev_close_price):
                                     # ... and the corresponding index is also increasing
+                                    '''
                                     if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1,
-                                                                                             str(self.rowslist[index][0])):
+                                                                                             date) \
+                                    '''
+                                    if True:
                                         # ... simulate the buying of stocks
 
                                         # 1. if there are more than one transactions, initialise a new row for output
@@ -419,9 +422,9 @@ def main():
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.015
+    target_price = 0.012
     # the stoploss needs to be negative.
-    stop_loss = -0.008
+    stop_loss = -0.006
     max_ndays_scan = 3
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
