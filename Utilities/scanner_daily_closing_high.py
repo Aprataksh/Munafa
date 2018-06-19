@@ -39,7 +39,7 @@ def drop_data(ticker):
     df['Open'] = df['Open'].astype(float)
     df['Low'] = df['Low'].astype(float)
 
-    initial_data = "2018-04-03"
+    initial_data = "2018-03-13"
     logger.info("scanning for daily closing higher from date: " + initial_data)
     index = 0
     for date in date_data:
@@ -89,10 +89,10 @@ def get_daily_closing_high(no_of_days, output_folder):
         """Code to implement the stock trading strateg"""
         for i in range(1,len(date_day)-no_of_days+1):
             c = 0
+            date_list = [ticker, date_day[i-1][:10]]
             # Code Change: Add float to convert values from string
             for j in range(0,no_of_days-1):
-                previous_day = i + j - 1
-                current_day = i + j
+                next_day = i + j + 1
                 current_day = i + j
                 previous_day = i + j - 1
                 if float(close_day[current_day]) > float(open_day[current_day])\
@@ -101,10 +101,11 @@ def get_daily_closing_high(no_of_days, output_folder):
                     if ((float(close_day[previous_day]) - float(open_day[current_day])) > .98 * day_change
                         or float(open_day[current_day]) > float(close_day[previous_day]))\
                             and float(low_day[current_day]) > float(open_day[previous_day]) :
+                        date_list.append(date_day[current_day][:10])
                         c += 1
                 if c == no_of_days-1:
-                    dates.append([ticker, date_day[i+j-2][:10], date_day[previous_day][:10], date_day[current_day][:10],
-                                  date_day[i+j+1][:10]])
+                    date_list.append(date_day[next_day][:10])
+                    dates.append(date_list)
             if c == no_of_days-1:
                 strategy_ticker.append(ticker)
 
@@ -125,6 +126,6 @@ def get_daily_closing_high(no_of_days, output_folder):
 
 
 def main():
-    ndays = 3
+    ndays = 2
     output_folder = "Check/"
     get_daily_closing_high(ndays, output_folder)
