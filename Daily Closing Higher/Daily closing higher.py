@@ -39,8 +39,9 @@ class DCH():
     open_column = 0
     overall_sell_with_brokerage = 0.0
     overall_c_intraday = 0
+    overall_c_trailing = 0
 
-    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns):
+    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld):
         self.deviation_from_prev_close = dfpc
         self.max_price_volatility = mpv
         self.max_deviation_from_open = mdfo
@@ -48,11 +49,15 @@ class DCH():
         self.max_capital_for_single_buy = mcfsb
         self.target_price = tp
         self.stop_loss = sl
+        self.initial_stoploss = self.stop_loss
         self.recorded_date = []
         self.day_open_price = []
         self.max_ndays_scan = mns
         tf = open(self.obj.path_to_output_dir() + "Daily_closing_higher/transactions.csv", 'w', newline="")
         self.transactions_file = csv.writer(tf)
+        self.initial_target = it
+        self.trailing_sl = tsl
+        self.trailing_sl_diff = tsld
 
     def initialise_output_headers_row(self):
         self.recorded_date = ["Date"]
@@ -166,10 +171,30 @@ class DCH():
             return True
         return False
 
+    def initial_target_met(self, purchase_price, index):
+        per = (float(self.rowslist[index][self.close_column]) - purchase_price) / purchase_price
+        if per > self.initial_target:
+            self.stop_loss = self.trailing_sl
+            return True
+        else:
+            return False
+
+    def trailing_stoploss(self, initial_stoploss, purchase_price, index):
+        per = (float(self.rowslist[index][self.close_column]) - purchase_price) / purchase_price
+        if (per - self.trailing_sl_diff) > self.stop_loss:
+            self.stop_loss = (per - self.trailing_sl_diff)
+
     def sell_stock_due_to_stop_loss(self, bought, purchase_price, purchase_date, index):
         current_close_price = float(self.rowslist[index][self.close_column])
         per = (current_close_price - purchase_price) / purchase_price
         if per <= self.stop_loss:
+            self.logger.info("SOLD at " + str(current_close_price) + " BOUGHT At = " + str(purchase_price) +
+                             " CURRENT STOPLOSS = " + str(self.stop_loss) + " PER_CHANGE = " + str(per))
+
+            if self.stop_loss > self.initial_stoploss:
+                self.overall_c_trailing = self.overall_c_trailing + 1
+                self.logger.info("TRAILING STOP LOSS SALE:")
+
             sell_amount = bought * current_close_price
             self.total_sell = self.total_sell + sell_amount
             self.overall_sell = self.overall_sell + sell_amount
@@ -346,6 +371,7 @@ class DCH():
                                 self.c_total_stoploss = 0
                                 bought = 0
                                 self.c_transactions_today = 0
+                                self.stop_loss = self.initial_stoploss
 
                                 # initialise output variables
                                 self.new_output_row()
@@ -432,19 +458,39 @@ class DCH():
                                 if self.sell_stock_due_to_price_check(bought, purchase_price, purchase_date, index):
                                     bought = 0
                                     ndays_scanned = 0
+
                             if bought != 0:
+                                stoploss_decider = 1
+
+                                if stoploss_decider == 1:
+                                    if float(self.rowslist[index][self.close_column]) > purchase_price:
+                                        if self.initial_target_met(purchase_price, index) == True:
+                                            self.trailing_stoploss(self.initial_stoploss, purchase_price, index)
+                                            self.logger.info("Stop-loss Changed = " + str(self.stop_loss) + " from "
+                                                             + str(self.initial_stoploss))
                                 if self.sell_stock_due_to_stop_loss(bought, purchase_price, purchase_date, index):
                                     bought = 0
                                     ndays_scanned = 0
                             '''        
                             print("ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
                                 self.max_ndays_scan) + "\n" + "bought: " + str(bought) + "\n" + str(self.rowslist[index]))
+                            
+                            self.logger.error("***dump  = ***" + str(index)+ " " +
+                                              str(len(self.rowslist)) + " " +
+                                              str(config.config.trading_closing_time)+"\n")
                             '''
-                            if (ndays_scanned == self.max_ndays_scan) or (index == len(self.rowslist) - 1):
-                                if config.config.trading_closing_time in self.rowslist[index][0] and bought != 0:
+                            if (ndays_scanned == self.max_ndays_scan) and bought != 0:
+                                if config.config.trading_closing_time in self.rowslist[index][self.datetime_column]:
                                     self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, index)
                                     bought = 0
                                     ndays_scanned = 0
+
+                            if (index == len(self.rowslist) - 1) and bought != 0:
+                                self.logger.info("End of day sale at time: " +
+                                                 str(self.rowslist[index][self.datetime_column ]) + "\n")
+                                self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, index)
+                                bought = 0
+                                ndays_scanned = 0
 
                             index += 1
 
@@ -494,7 +540,8 @@ class DCH():
             (self.overall_c_intraday/(self.overall_c_wins + self.overall_c_stoploss + self.overall_c_sellEod)) * 100
         self.logger.info("Percentage wins: " + str(percentage_wins) + "  profit after brokerage: " +
                          str(profit_after_brokerage) + " Intraday sales " + str(self.overall_c_intraday)
-                         + " Intraday percentage " + str(percentage_intraday) + "\n")
+                         + " Intraday percentage " + str(percentage_intraday) + " overall trailing stoploss:"
+                         + str(self.overall_c_trailing) + "\n")
 
 
 def main():
@@ -503,10 +550,14 @@ def main():
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.015
+    target_price = 0.03
     # the stoploss needs to be negative.
     stop_loss = -0.008
     max_ndays_scan = 3
+    initial_target = 0.015
+    trailing_stop_loss = 0.01
+    tsl_difference = initial_target - trailing_stop_loss
+
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
     logging.basicConfig(filename=obj.path_to_output_dir() + "Daily_closing_higher/dch_log.Log", level=logging.DEBUG,
@@ -519,7 +570,7 @@ def main():
     logger.info("Maximum days tto hold a position: " + str(max_ndays_scan) + "\n")
     obj = DCH(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
-              target_price, stop_loss, max_ndays_scan)
+              target_price, stop_loss, max_ndays_scan, initial_target, trailing_stop_loss, tsl_difference)
     logger.info(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
     obj.DCH()
 
