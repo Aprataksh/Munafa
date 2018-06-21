@@ -23,9 +23,9 @@ datetime
 csv
 
 ## Team
-Aprataksh Anand [LinkedIn profile](https://www.linkedin.com/in/aayushmaan-rajora-a69a64166/)
+Aprataksh Anand [LinkedIn profile](https://www.linkedin.com/in/aprataksh-anand-a35846166/)
 
-Aayushmaan Rajora
+Aayushmaan Rajora [LinkedIn profile](https://www.linkedin.com/in/aayushmaan-rajora-a69a64166/)
 
 Rohit
 
