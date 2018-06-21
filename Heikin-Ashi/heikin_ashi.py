@@ -10,9 +10,6 @@ import config
 import get_ticker_list
 
 obj=config.config(r"../config.txt")
-LOG_FORMAT="%(levelname)s %(asctime)s - %(message)s"
-logging.basicConfig(filename=obj.path_to_output_dir()+"Heikin-Ashi/log.Log",level=logging.DEBUG,format=LOG_FORMAT,filemode='w')
-logger=logging.getLogger()
 
 def HA(ticker,df):
     df['HA_Close']=(df['Open']+ df['High']+ df['Low']+df['Close'])/4
@@ -39,11 +36,11 @@ def HA(ticker,df):
     df = df[['Close', 'High', 'Low', 'Open', 'Volume']]
     df.to_csv(obj.path_to_output_dir()+"Heikin-Ashi/"+ticker+'.csv')
 
-def convert_to_df(ticker):
+def convert_to_df(ticker,path_to_data):
     rows = []
     times = []
     columns = ['Close', 'High', 'Low', 'Open', 'Volume']
-    with open(obj.path_to_historical_5_min_dir()+ticker+".csv",'r') as f:
+    with open(path_to_data+ticker+".csv",'r') as f:
         lines= csv.reader(f)
         for line in lines:
             if 'Close' in line:
@@ -53,22 +50,16 @@ def convert_to_df(ticker):
         df = pd.DataFrame(rows,index=pd.DatetimeIndex(times, name='Date Time'),columns=columns)
         return df
     
-def main():
+def main(path_to_data):
     c=0
     ticker_list=get_ticker_list.get_ticker_list(obj.path_to_master_list())
     for ticker in ticker_list:
         print(ticker)
-        logger.info(ticker)
-        df=convert_to_df(ticker)
+        df=convert_to_df(ticker,path_to_data)
         HA(ticker,df)
     # To find the number of files in the output directory that end with .csv i.e. are the output files of the tickers
     list=os.listdir(obj.path_to_output_dir()+"Heikin-Ashi/")
     length_1=len(fnmatch.filter(list, "*.csv"))
     #to find the number of tickers in the master list
     ticker_list=get_ticker_list.get_ticker_list(obj.path_to_master_list())
-    length_2=len(ticker_list)
-    if length_1 == length_2:
-        logger.info("The data is validated and seems correct")
-    else:
-        logger.info("Some error occurred. The data is not validated")
-main()
+

@@ -10,7 +10,7 @@ from config import brokerage
 from transaction import transaction
 # sys.path.insert(1,r"..\RSI")
 #import rsi_list
-# sys.path.insert(2,r"..\Heikin-Ashi")
+sys.path.insert(2,r"..\Heikin-Ashi")
 import heikin_ashi
 
 class DCH():
@@ -331,8 +331,8 @@ class DCH():
                         self.c_total_wins = 0
                         self.c_total_sellEOD = 0
                         date = '0'
-                        df_rsi = pd.read_csv(self.obj.path_to_output_dir()+"RSI/"+self.line[self.column_no_of_ticker]+"_rsi.csv")
-                        rsi=df_rsi['RSI']
+                        # df_rsi = pd.read_csv(self.obj.path_to_output_dir()+"RSI/"+self.line[self.column_no_of_ticker]+"_rsi.csv")
+                        # rsi=df_rsi['RSI']
                         df_ha = pd.read_csv(self.obj.path_to_output_dir()+"Heikin-Ashi/"+self.line[self.column_no_of_ticker]+".csv")
                         ha_close=df_ha['Close']
                         ha_open=df_ha['Open']
@@ -418,8 +418,8 @@ class DCH():
                                 # ... and the current price is near the closing price of the previous day
                                 current_index=index-1
                                 previous_index=index-2
-                                previous_rsi=rsi[previous_index]
-                                current_rsi=rsi[current_index]
+                                # previous_rsi=rsi[previous_index]
+                                # current_rsi=rsi[current_index]
                                 #if current_rsi>30 and previous_rsi <30 :
                                 if True:
                                     if ha_close[current_index]>ha_open[current_index]:
