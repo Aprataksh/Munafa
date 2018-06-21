@@ -23,7 +23,7 @@ datetime
 csv
 
 ## Team
-Aprataksh Anand 
+Aprataksh Anand (https://www.linkedin.com/in/aayushmaan-rajora-a69a64166/)
 
 Aayushmaan Rajora
 
