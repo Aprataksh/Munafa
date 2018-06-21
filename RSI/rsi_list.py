@@ -1,5 +1,7 @@
 import csv
 import sys
+import os
+from stat import S_IREAD, S_IRGRP, S_IROTH
 import pandas as pd
 from stockstats import StockDataFrame as Sdf
 import matplotlib.pyplot as plt
@@ -11,9 +13,9 @@ class RSI:
     obj = config.config(r"../config.txt")
 
     def __init__(self,p,ticker,path):
-        self.period=p
-        self.ticker=ticker
-        self.path_to_ticker_data=path
+        self.period = p
+        self.ticker = ticker
+        self.path_to_ticker_data = path
 
     def calculate_rsi(self):
         rows = []
@@ -27,21 +29,20 @@ class RSI:
                     rows.append(map(float,line[1:]))
             df = pd.DataFrame(rows,index=pd.DatetimeIndex(times, name='Date Time'),columns=columns)
             stock_df = Sdf.retype(df)
-            rsi_text="rsi_"+str(self.period)
+            rsi_text = "rsi_" + str(self.period)
             df['rsi'] = stock_df[rsi_text]
-            rsi=list(df['rsi'])
-            rsi_df=pd.DataFrame(rsi,index=pd.DatetimeIndex(times, name='Date Time'),columns=['RSI'])
+            rsi = list(df['rsi'])
+            rsi_df = pd.DataFrame(rsi,index=pd.DatetimeIndex(times, name='Date Time'),columns=['RSI'])
             #print(rsi_df)
-            rsi_df.to_csv(self.obj.path_to_output_dir()+"RSI/" + self.ticker + "_rsi.csv")
+            rsi_df.to_csv(self.obj.path_to_output_dir() + "RSI/" + self.ticker + "_rsi.csv")
+            os.chmod(self.obj.path_to_output_dir() + "RSI/" + self.ticker + "_rsi.csv", S_IREAD|S_IRGRP|S_IROTH)
             #plt.plot(rsi_df['RSI'],color='red')
             #plt.show()
-
-def main():
-    period=14
+def main(path_to_data):
+    period = 4
     obj = config.config(r"../config.txt")
-    ticker_list=get_ticker_list.get_ticker_list(obj.path_to_master_list())
+    ticker_list = get_ticker_list.get_ticker_list(obj.path_to_master_list())
     for ticker in ticker_list:
         print(ticker)
-        rsi_obj=RSI(period,ticker,obj.path_to_historical_5_min_dir()+ticker+".csv")
+        rsi_obj = RSI(period,ticker,path_to_data + ticker + ".csv")
         rsi_obj.calculate_rsi()
-main()
