@@ -2,7 +2,6 @@ import csv
 import sys 
 import pandas as pd 
 import logging
-
 sys.path.insert(0, r"..\utilities") 
 import is_index_in_same_direction
 import scanner_daily_closing_high 
@@ -42,8 +41,9 @@ class DCH():
     overall_sell_with_brokerage = 0.0
     overall_c_intraday = 0
     overall_c_trailing = 0
+    c_intraday_losses = 0
 
-    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld):
+    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld, pos_flag, utsl):
         self.deviation_from_prev_close = dfpc
         self.max_price_volatility = mpv
         self.max_deviation_from_open = mdfo
@@ -60,6 +60,8 @@ class DCH():
         self.initial_target = it
         self.trailing_sl = tsl
         self.trailing_sl_diff = tsld
+        self.position_flag=pos_flag
+        self.use_tsl = utsl
 
     def initialise_output_headers_row(self):
         self.recorded_date = ["Date"]
@@ -124,7 +126,7 @@ class DCH():
 
     def sell_stock_due_to_price_check(self, bought, purchase_price, purchase_date, index):
         current_close_price = float(self.rowslist[index][self.close_column])
-        per = (current_close_price - purchase_price) / purchase_price
+        per = self.position_flag * ((current_close_price - purchase_price) / purchase_price)
         if per >= self.target_price:
             sell_amount = bought * current_close_price
             self.total_sell = self.total_sell + sell_amount
@@ -134,7 +136,7 @@ class DCH():
             brokerage_object = brokerage()
             if (purchase_date != self.rowslist[index][self.datetime_column][:10]):
                 brokerage_fee = brokerage_object.calculate_delivery_brokerage(sell_amount)
-                sell_with_brokerage = sell_amount - brokerage_fee
+                sell_with_brokerage = sell_amount - (self.position_flag * brokerage_fee)
                 self.logger.info("Delivery Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: " + str(sell_with_brokerage) 
                 	+ " Brokerage fee: " + str(brokerage_fee))
             else:
@@ -174,21 +176,25 @@ class DCH():
         return False
 
     def initial_target_met(self, purchase_price, index):
-        per = (float(self.rowslist[index][self.close_column]) - purchase_price) / purchase_price
+        current_close_price = float(self.rowslist[index][self.close_column])
+        per = self.position_flag * ((float(self.rowslist[index][self.close_column]) - purchase_price) / purchase_price)
         if per > self.initial_target:
             self.stop_loss = self.trailing_sl
+            self.logger.info("initial target met: Stock " + self.line[self.column_no_of_ticker] +
+                             " Current price " + str(current_close_price) + " price at date " +
+                             str(self.rowslist[index])[2:12] + " at time " + str(self.rowslist[index])[13:18] + "\n")
             return True
         else:
             return False
 
     def trailing_stoploss(self, initial_stoploss, purchase_price, index):
-        per = (float(self.rowslist[index][self.close_column]) - purchase_price) / purchase_price
+        per = self.position_flag * ((float(self.rowslist[index][self.close_column]) - purchase_price) / purchase_price)
         if (per - self.trailing_sl_diff) > self.stop_loss:
             self.stop_loss = (per - self.trailing_sl_diff)
 
     def sell_stock_due_to_stop_loss(self, bought, purchase_price, purchase_date, index):
         current_close_price = float(self.rowslist[index][self.close_column])
-        per = (current_close_price - purchase_price) / purchase_price
+        per = self.position_flag * ((current_close_price - purchase_price) / purchase_price)
         if per <= self.stop_loss:
             self.logger.info("SOLD at " + str(current_close_price) + " BOUGHT At = " + str(purchase_price) + " CURRENT STOPLOSS = " 
             	+ str(self.stop_loss) + " PER_CHANGE = " + str(per))
@@ -205,16 +211,17 @@ class DCH():
             brokerage_object = brokerage()
             if (purchase_date != self.rowslist[index][self.datetime_column][:10]):
                 brokerage_fee = brokerage_object.calculate_delivery_brokerage(sell_amount)
-                sell_with_brokerage = sell_amount - brokerage_fee
+                sell_with_brokerage = sell_amount - (self.position_flag * brokerage_fee)
                 self.logger.info("Delivery Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: " + str(sell_with_brokerage) 
                 	+ " Brokerage fee: " + str(brokerage_fee))
             else:
                 brokerage_fee = brokerage_object.calculate_intraday_brokerage(sell_amount)
-                sell_with_brokerage = sell_amount - brokerage_fee
+                sell_with_brokerage = sell_amount - (self.position_flag * brokerage_fee)
                 self.logger.info("Intraday Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: " + str(sell_with_brokerage) 
                 	+ " Brokerage fee: " + str(brokerage_fee))
                 self.overall_c_intraday = self.overall_c_intraday + 1
-
+                self.c_intraday_losses = self.c_intraday_losses + 1
+                
             self.overall_sell_with_brokerage = self.overall_sell_with_brokerage + sell_with_brokerage
 
             self.logger.info("Stop Loss Sale: Stock " + self.line[self.column_no_of_ticker] + " sold " + str(bought) + " shares at " 
@@ -252,7 +259,7 @@ class DCH():
         brokerage_object = brokerage()
         if (purchase_date != self.rowslist[index][self.datetime_column][:10]):
             brokerage_fee = brokerage_object.calculate_delivery_brokerage(sell_amount)
-            sell_with_brokerage = sell_amount - brokerage_fee
+            sell_with_brokerage = sell_amount - (self.position_flag * brokerage_fee)
             self.logger.info("Delivery Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: " + str(sell_with_brokerage) 
             	+ " Brokerage fee: " + str(brokerage_fee))
         else:
@@ -261,6 +268,8 @@ class DCH():
             self.logger.info("Intraday Sale: " + "Sell amount: " + str(sell_amount) + " sell with brokerage: " + str(sell_with_brokerage) 
             	+ " Brokerage fee: " + str(brokerage_fee))
             self.overall_c_intraday = self.overall_c_intraday + 1
+            if sell_with_brokerage < bought * purchase_price:
+                self.c_intraday_losses = self.c_intraday_losses + 1
 
         self.overall_sell_with_brokerage = self.overall_sell_with_brokerage + sell_with_brokerage
 
@@ -295,7 +304,7 @@ class DCH():
         ndays = 2
         self.logger.info("number of days to scan for daily closing higher: " + str(ndays) + "\n\n")
         scanner_daily_closing_high.get_daily_closing_high(ndays, strategy_folder)
-        heikin_ashi.main(self.obj.path_to_historical_5_min_dir())
+        #heikin_ashi.main(self.obj.path_to_historical_5_min_dir())
         # the list that contains the symbols for all the stocks that need to be
         # downloaded
         path_to_stock_master_list = \
@@ -390,7 +399,8 @@ class DCH():
                                 self.new_output_row()
 
                                 ndays_scanned = 0
-
+                                # once the date match,  break out of the loop to start scanning from the row after
+                                # the the dates had matched to look for potential trades
                                 break
 
                         # After getting the index, the closing of the previous
@@ -441,7 +451,7 @@ class DCH():
                                 continue
 
                             # Current price of the stock
-                            current_price = float(row[1])
+                            current_price = float(row[self.close_column])
 
                             if row[0][:10] != date[:10]:
                                 # encountered a new date;
@@ -459,21 +469,40 @@ class DCH():
                             if bought == 0 and do_not_buy == 0:
                                 # ...  and the current price is near the
                                 # closing price of the previous day
+                                # previous_col_correct and current_col_correct are counters to check if the color is red/green
+                                # acc. to the value of position_flag
+
+                                # we subtract one from the index  to find the current index in the RSI file because
+                                # the variable index refers to the historical data file which contains one additional header
+                                # row
                                 current_index = index - 1
                                 previous_index = index - 2
                                 if ha_close[current_index] > ha_open[current_index]:
-                                        current_is_green = True
+                                    if self.position_flag == 1:
+                                        current_col_correct = True
+                                    else:
+                                        current_col_correct = False
                                 else:
-                                        current_is_green = False
+                                    if self.position_flag == 1:
+                                        current_col_correct = False
+                                    else:
+                                        current_col_correct = True
                                 if ha_close[previous_index] > ha_open[previous_index]:
-                                    previous_is_green = True
+                                    if self.position_flag == 1:
+                                        previous_col_correct = True
+                                    else:
+                                        previous_col_correct = False
                                 else:
-                                    previous_is_green = False
-                                if current_is_green and previous_is_green:
+                                    if self.position_flag == 1:
+                                        previous_col_correct = False
+                                    else:
+                                        previous_col_correct = True
+                                if current_col_correct and previous_col_correct:
                                     # ...  and the corresponding index is also
                                     # increasing
-                                    if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, 1,
+                                    if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, self.position_flag,
                                                                                              str(self.rowslist[index][0])):
+                                    # if  True:
                                         # ...  simulate the buying of stocks
 
                                         # 1.  if there are more than one
@@ -500,10 +529,13 @@ class DCH():
                                     ndays_scanned = 0
 
                             if bought != 0:
-                                stoploss_decider = 1
 
-                                if stoploss_decider == 1:
-                                    if float(self.rowslist[index][self.close_column]) > purchase_price:
+                                if self.use_tsl == 1:
+                                    if (self.position_flag == 1 and
+                                        float(self.rowslist[index][self.close_column]) > purchase_price) or\
+                                            (self.position_flag == -1 and
+                                             float(self.rowslist[index][self.close_column]) < purchase_price):
+                                        self.logger.info("index " + str(index) + " " + str(row) + "\n")
                                         if self.initial_target_met(purchase_price, index) == True:
                                             self.trailing_stoploss(self.initial_stoploss, purchase_price, index)
                                             self.logger.info("Stop-loss Changed = " + str(self.stop_loss) + " from " + str(self.initial_stoploss))
@@ -567,9 +599,14 @@ class DCH():
         profit_after_brokerage = self.overall_sell_with_brokerage - self.overall_cost
         percentage_intraday = \
             (self.overall_c_intraday / (self.overall_c_wins + self.overall_c_stoploss + self.overall_c_sellEod)) * 100
-        self.logger.info("Percentage wins: " + str(percentage_wins) + "  profit after brokerage: " + str(profit_after_brokerage) + " Intraday sales " 
-         	+ str(self.overall_c_intraday) + " Intraday percentage " + str(percentage_intraday) + " overall trailing stoploss:" + str(self.overall_c_trailing) + "\n")
-
+        percentage_loss_intraday = (self.c_intraday_losses / self.overall_c_intraday) * 100
+        self.logger.info("Percentage wins: " + str(percentage_wins) + "  profit after brokerage: " + str(
+            profit_after_brokerage) + "\n")
+        self.logger.info(" Intraday sales "
+                         + str(self.overall_c_intraday) + " Intraday percentage " + str(percentage_intraday) + "\n")
+        self.logger.info(" Intraday losses " + str(self.c_intraday_losses) + " Intraday loss percentage "
+                         + str(percentage_loss_intraday) + " overall trailing stoploss:" + str(
+            self.overall_c_trailing) + "\n")
 
 def main():
     deviation_from_prev_close = 0.002
@@ -577,14 +614,18 @@ def main():
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.03
+    target_price = 0.015
     # the stoploss needs to be negative.
     stop_loss = -0.008
     max_ndays_scan = 3
-    initial_target = 0.015
-    trailing_stop_loss = 0.01
+    initial_target = 0.03
+    trailing_stop_loss = 0.005
     tsl_difference = initial_target - trailing_stop_loss
-
+    # should be used trailing stoploss or not; I signed it the value of 1  to use trailing stop loss.if it is 0,
+    # the value of initial target, trailing stoploss and tsl difference are ignored
+    use_tsl = 0
+    # for a short position, assign the value of -1. For a long position, assign the value of 1
+    position_type = 1
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
     logging.basicConfig(filename=obj.path_to_output_dir() + "Daily_closing_higher_with_heikin_ashi/dch_log.Log", level=logging.DEBUG,
@@ -593,11 +634,14 @@ def main():
     logger.info(" Configuration for this run: " + "\n" + " deviation from previous close: " + str(deviation_from_prev_close) + "\n")
     logger.info(" target price:" + str(target_price) + " stoploss: " + str(stop_loss) + "\n")
     logger.info(" maximum capital for single purchase: " + str(max_capital_for_single_buy) + "\n")
-    logger.info("Maximum days tto hold a position: " + str(max_ndays_scan) + "\n")
+    logger.info("Maximum days to hold a position: " + str(max_ndays_scan) + "\n")
     obj = DCH(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
-              target_price, stop_loss, max_ndays_scan, initial_target, trailing_stop_loss, tsl_difference)
-    logger.info(" maximum number of days to scan: " + str(max_ndays_scan) + "\n")
+              target_price, stop_loss, max_ndays_scan, initial_target, trailing_stop_loss, tsl_difference, position_type,
+              use_tsl)
+    logger.info(" position type(Long or Short): " + str(position_type) + " using trailing stoploss: " +
+                " initial target for trailing stoploss: " + str(initial_target)  + "\n" )
+    logger.info(" trailing stoploss: " + str(trailing_stop_loss) + "trailing stoploss difference: " + str(tsl_difference) + "\n")
     obj.DCH()
 
 
