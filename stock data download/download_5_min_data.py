@@ -55,12 +55,12 @@ def main():
     for ticker in ticker_list:
 
         """Change the granularity here"""
-        # 300 for five minutes, 1800 for 30 minutes
+        # 300 for five minutes, 1800 for 30 minutes, 3600 for 60 minutes
         # last date for 5 minutes downloaded on June 19, 2018
         # last date for 30 minutes download on June 20, 2018
         # period = 300
-        period = 1800
-        days = 15
+        period = 3600
+        days = 40
         exchange = 'NSE'
         print(ticker)
         if '_' in ticker:
@@ -86,17 +86,21 @@ def main():
                 drop_index.append(i)
         if len(drop_index) > 0:
             df2 = df2.drop(df2.index[drop_index])
-
-        last_value = df2.values[-1][0]
-        last_index = -1
-        for index in df.index:
-            if df.values[index][0] == last_value:
-                last_index = index
-        if last_index == -1:
-            df2 = df2.append(df)
+        if len(df2.index) != 0:
+            last_value = df2.values[-1][0]
+            last_index = -1
+            for index in df.index:
+                if df.values[index][0] == last_value:
+                    last_index = index
+            if last_index == -1:
+                df2 = df2.append(df)
+            else:
+                df = df.drop(df.index[:last_index + 1])
+                df2 = df2.append(df)
         else:
-            df = df.drop(df.index[:last_index + 1])
-            df2 = df2.append(df)
+            print(str(ticker) +  "Ticker looks to be empty" + "\n")
+            df2 = df
+
         df2.to_csv(path_to_output_dir1 + ticker + ".csv", index=False)
 
     """Change according to the number of tickers"""
