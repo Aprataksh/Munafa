@@ -98,8 +98,7 @@ def get_daily_closing_high(no_of_days, output_folder):
                 if float(close_day[current_day]) > float(open_day[current_day])\
                         and float(close_day[previous_day]) > float(open_day[previous_day]):
                     day_change = float(close_day[previous_day])-float(open_day[previous_day])
-                    if ((float(close_day[previous_day]) - float(open_day[current_day])) > .98 * day_change
-                        or float(open_day[current_day]) > float(close_day[previous_day]))\
+                    if (float(close_day[previous_day]) - float(open_day[current_day])) < (.98 * day_change) \
                             and float(low_day[current_day]) > float(open_day[previous_day]) :
                         date_list.append(date_day[current_day][:10])
                         c += 1
@@ -129,3 +128,6 @@ def main():
     ndays = 2
     output_folder = "Check/"
     get_daily_closing_high(ndays, output_folder)
+    print("Hello")
+
+#main()
