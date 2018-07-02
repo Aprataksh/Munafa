@@ -1,5 +1,7 @@
 import sys
-sys.path.insert(0, r"..\utilities") 
+from datetime import datetime,timedelta
+sys.path.insert(0, r"..\utilities")
+import config
 from config import brokerage
 from transaction import transaction
 
@@ -32,36 +34,50 @@ class Buy_sell():
     folder_name = ""
 
     def buy_stocks(self, purchase_cost, index_close):
-        bought = int(self.max_capital_for_single_buy / purchase_cost)
-        if bought != 0:
-            actual_cost = (bought * purchase_cost)
-            self.total_cost = self.total_cost + actual_cost
-            self.total_purchased += bought
-            self.overall_cost = self.overall_cost + actual_cost
-            self.c_overall_buy_trans = self.c_overall_buy_trans + 1
-            self.c_transactions_today = self.c_transactions_today + 1
-            self.buy_amount[-1] = str(actual_cost)
-            self.logger.info("Stock " + self.line[self.column_no_of_ticker] + " bought " + str(bought) + " shares at " + str(purchase_cost) + 
-            	" price at date " + str(self.rowslist[index_close])[2:12] + " at time " + str(self.rowslist[index_close])[12:18] + "\n")
-
-            """Use of Transaction Class"""
-            date = str(self.rowslist[index_close])[2:12]
-            time = str(self.rowslist[index_close])[12:18]
-            print_object = transaction(self.path_to_transaction_file)
-            print_object.print_transaction_items(date, time, self.line[self.column_no_of_ticker], "1",
-                                                 str(bought), str(purchase_cost), str(actual_cost), "0")
-
-            '''
-            self.transactions_file.writerow(str(self.rowslist[index_close])[2:12] +  str(self.rowslist[index_close])[12:18] +
-                                            self.line[0] +  "1" +  str(bought) + str(purchase_cost) + str(0.0-actual_cost) +
-                                            "0")
-            '''
+        config_obj = config.config(r"../config.txt")
+        purchase_cutoff_time = config_obj.purchase_cutoff_time
+        checkdate = self.rowslist[index_close][self.datetime_column][2:11] + purchase_cutoff_time[:4] + ":00"
+        if 'pm' in purchase_cutoff_time or 'Pm' in purchase_cutoff_time or 'PM' in purchase_cutoff_time or 'pM' in purchase_cutoff_time:
+            checkdate = datetime.strptime(checkdate, "%y-%m-%d %H:%M:%S") + timedelta(hours = 12)
         else:
-            # this may happen if the price of one stock is more than the
-            # maximum capital
-            self.logger.error("Could not buy stock " + self.line[0] + " on date " + str(self.rowslist[index_close])[2:12] + 
-            	" due to insufficient daily stock fund\n")
-        return bought
+            checkdate = datetime.strptime(checkdate, "%y-%m-%d %H:%M:%S")
+        curr_date = datetime.strptime(self.rowslist[index_close][self.datetime_column][2:18], "%y-%m-%d %H:%M:%S")
+        if curr_date < checkdate:
+            bought = int(self.max_capital_for_single_buy / purchase_cost)
+            if bought != 0:
+                actual_cost = (bought * purchase_cost)
+                self.total_cost = self.total_cost + actual_cost
+                self.total_purchased += bought
+                self.overall_cost = self.overall_cost + actual_cost
+                self.c_overall_buy_trans = self.c_overall_buy_trans + 1
+                self.c_transactions_today = self.c_transactions_today + 1
+                self.buy_amount[-1] = str(actual_cost)
+                self.logger.info("Stock " + self.line[self.column_no_of_ticker] + " bought " + str(bought) + " shares at " + str(purchase_cost) +
+            	    " price at date " + str(self.rowslist[index_close])[2:12] + " at time " + str(self.rowslist[index_close])[12:18] + "\n")
+
+                """Use of Transaction Class"""
+                date = str(self.rowslist[index_close])[2:12]
+                time = str(self.rowslist[index_close])[12:18]
+                print_object = transaction(self.path_to_transaction_file)
+                print_object.print_transaction_items(date, time, self.line[self.column_no_of_ticker], "1",
+                                                     str(bought), str(purchase_cost), str(actual_cost), "0")
+
+                '''
+                self.transactions_file.writerow(str(self.rowslist[index_close])[2:12] +  str(self.rowslist[index_close])[12:18] +
+                                                self.line[0] +  "1" +  str(bought) + str(purchase_cost) + str(0.0-actual_cost) +
+                                                "0")
+                '''
+            else:
+                # this may happen if the price of one stock is more than the
+                # maximum capital
+                self.logger.error("Could not buy stock " + self.line[0] + " on date " + str(self.rowslist[index_close])[2:12] +
+            	    " due to insufficient daily stock fund\n")
+            return bought
+        else:
+            self.logger.error(
+                "Could not buy stock " + self.line[0] + " on date " + str(self.rowslist[index_close])[2:12] +
+                " due to cut-off time for purchase\n")
+            return 0
 
     def sell_stock_due_to_price_check(self, bought, purchase_price, purchase_date, index):
         current_close_price = float(self.rowslist[index][self.close_column])

@@ -3,6 +3,7 @@ import ast
 class config():
     # the time after which we cease any buy or sell transaction
     trading_closing_time = "15:00"
+    purchase_cutoff_time = "11:00 am"
 
     def __init__(self, path_to_config):
         with open(path_to_config, "r") as f:

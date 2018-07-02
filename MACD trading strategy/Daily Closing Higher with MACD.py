@@ -372,13 +372,16 @@ def main():
     logger.info(" target price:" + str(target_price) + " stoploss: " + str(stop_loss) + "\n")
     logger.info(" maximum capital for single purchase: " + str(max_capital_for_single_buy) + "\n")
     logger.info("Maximum days to hold a position: " + str(max_ndays_scan) + "\n")
-    obj = DCH_MACD(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
+    dch_macd_obj = DCH_MACD(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
               target_price, stop_loss, max_ndays_scan, initial_target, trailing_stop_loss, tsl_difference, position_type,
               use_tsl)
-    logger.info(" position type(Long or Short): " + str(position_type) + " using trailing stoploss: " +
-                " initial target for trailing stoploss: " + str(initial_target)  + "\n" )
-    logger.info(" trailing stoploss: " + str(trailing_stop_loss) + "trailing stoploss difference: " + str(tsl_difference) + "\n")
-    obj.DCH_MACD()
+    logger.info(" position type(Long or Short): " + str(position_type) + " using trailing stoploss: " + str(use_tsl) +
+                " initial target for trailing stoploss: " + str(initial_target)  + "\n")
+    logger.info(" trailing stoploss: " + str(trailing_stop_loss) + " trailing stoploss difference: " + str(tsl_difference) + "\n")
+    logger.info(" purchase cut-off time: " + str(obj.purchase_cutoff_time) +
+                " selling cut-off time: " + str(obj.trading_closing_time) + "\n")
+
+    dch_macd_obj.DCH_MACD()
 
 main()
