@@ -114,6 +114,22 @@ class brokerage():
         total_charges = brokerage_charges  + stt + transaction_charges + gst
         return total_charges
 
+class zerodha_tokens():
+    def __init__(self, path_to_config_file):
+        with open(path_to_config_file, "r") as f:
+            dictionary = ast.literal_eval(f.read())
+            self.zerodha_api_key = dictionary.get("zerodha_api_key")
+            self.zerodha_api_secret = dictionary.get("zerodha_api_secret")
+            self.zerodha_public_token = dictionary.get("zerodha_public_token")
+
+    def get_zerodha_api_key(self):
+        return self.zerodha_api_key
+
+    def get_zerodha_api_secret(self):
+        return self.zerodha_api_secret
+
+    def get_zerodha_public_token(self):
+        return self.zerodha_public_token
 def main():
     path_to_config_file = r"../config.txt"
     obj = config()
