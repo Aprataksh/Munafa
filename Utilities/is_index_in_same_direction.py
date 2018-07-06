@@ -51,7 +51,7 @@ def is_index_in_same_direction(path_to_index_file, direction, final_date_time):
                         return False
             index = index + 1
         if found == 0:
-            logger("No index data for " + final_date_time)
+            logger.info("No index data for " + final_date_time)
 def main():
     final_date = "2018-05-25 10:30"
     direction = 1
