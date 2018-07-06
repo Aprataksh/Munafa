@@ -3,7 +3,7 @@ import ast
 class config():
     # the time after which we cease any buy or sell transaction
     trading_closing_time = "15:00"
-    purchase_cutoff_time = "11:00 am"
+    purchase_cutoff_time = "05:00 pm"
 
     def __init__(self, path_to_config):
         with open(path_to_config, "r") as f:
@@ -17,6 +17,7 @@ class config():
             self.ledger_list = dictionary.get("path_to_ledger_list")
             self.ledger_log = dictionary.get("path_to_ledger_log")
             self.historical_1_day_dir = dictionary.get("path_to_historical_1_day_dir")
+            self.index_1_day_dir = dictionary.get("path_to_index_1_day_data")
 
     def path_to_historical_5_min_dir(self):
         return self.historical_5_dir
@@ -36,6 +37,8 @@ class config():
         return self.ledger_log
     def path_to_historical_1_day_dir(self):
         return self.historical_1_day_dir
+    def path_to_index_1_day_dir(self):
+         return self.index_1_day_dir
 
 class col_num():
     def __init__(self, path_to_config):
