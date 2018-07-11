@@ -8,10 +8,10 @@ import get_ticker_list
 import drop_extra_headers
 from config import config
 
-def macd_crossover(ticker):
+def macd_crossover(ticker,path_to_data):
     config_object = config("../config.txt")
-    path_to_historical_data = config_object.path_to_historical_5_min_dir()
-    df = drop_extra_headers.drop_extra_headers(path_to_historical_data, ticker)
+    path_to_historical_data = path_to_data
+    df = pd.read_csv(path_to_historical_data + ticker + ".csv")
     # FAST_EMA = pd.Series(round((df['Close']).ewm(span=12).mean(), 2), name="FAST_EMA")
     FAST_EMA = pd.Series(round((df['Close']).ewm(span=12,adjust=False).mean(), 2), name="FAST_EMA")
     SLOW_EMA = pd.Series(round((df['Close']).ewm(span=26,adjust=False).mean(), 2), name="SLOW_EMA")

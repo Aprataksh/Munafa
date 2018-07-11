@@ -8,8 +8,9 @@ import MACD_file
 import Buy_Sell
 import scanner_daily_closing_high
 import config
+import data_reader
 
-class DCH_MACD(Buy_Sell.Buy_sell):
+class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
     obj = config.config(r"../config.txt")
     LOG_FORMAT = "%(levelname)s %(asctime)s - %(message)s"
     logging.basicConfig(filename=obj.path_to_output_dir() + "Daily_closing_higher_MACD/dch_log.Log", level=logging.DEBUG,
@@ -93,8 +94,6 @@ class DCH_MACD(Buy_Sell.Buy_sell):
             self.obj.path_to_output_dir() + strategy_folder + "scanner_output.csv"
         # directory path to the historical data.  Ensure that there is a / at
         # the end
-        path_to_historical_data = self.obj.path_to_historical_5_min_dir()
-
         # path to the index file that contains the data for the corresponding
         # index
         path_to_index_file = self.obj.path_to_index_dir() + "NIFTY.csv"
@@ -130,199 +129,213 @@ class DCH_MACD(Buy_Sell.Buy_sell):
                                                               + "%26" + self.line[self.column_no_of_ticker][
                                                                         self.line[self.column_no_of_ticker].index(
                                                                             '&') + 1:]
-                    macd_list, signal_list = MACD_file.macd_crossover(self.line[self.column_no_of_ticker])
-                    with open(path_to_historical_data + self.line[self.column_no_of_ticker] + ".csv", 'r') as g:
-                        # initialised the headers  for output
-                        self.initialise_output_headers_row()
-                        self.logger.info("Stock = " + self.line[self.column_no_of_ticker] + "\n")
-                        print('\n', self.line[self.column_no_of_ticker])
-                        rows = csv.reader(g)
-                        self.rowslist = list(rows)
-                        index = -1
-                        open_price = 0.0
-                        close_price = 0.0
-                        index_open = 1
-                        index_close = 1
-                        self.total_cost = 0.0
-                        self.total_sell = 0.0
-                        self.c_total_wins = 0
-                        self.c_total_sellEOD = 0
-                        date = '0'
-                        # scan for the date in the historical data that matches the date provided by the
-                        # previous algorithm ( in this case the daily closing higher which
-                        # selects the ticker symbol and the date for which the ticker symbol needs to be scanned
-                        for row in self.rowslist:
-                            if str(self.line[ndays + 1]) == str(row[0])[:10]:
-                                index = self.rowslist.index(row)
+                    macd_list, signal_list = MACD_file.macd_crossover(self.line[self.column_no_of_ticker],self.obj.path_to_trade_entry_dir())
+                    self.read_trade_entry_data()
+                    self.read_trade_exit_data()
+                    # initialised the headers  for output
+                    self.initialise_output_headers_row()
+                    self.logger.info("Stock = " + self.line[self.column_no_of_ticker] + "\n")
+                    print('\n', self.line[self.column_no_of_ticker])
+                    index = -1
+                    open_price = 0.0
+                    close_price = 0.0
+                    index_open = 1
+                    index_close = 1
+                    self.total_cost = 0.0
+                    self.total_sell = 0.0
+                    self.c_total_wins = 0
+                    self.c_total_sellEOD = 0
+                    self.entry_or_exit = False
+                    date = '0'
+                    # scan for the date in the historical data that matches the date provided by the
+                    # previous algorithm ( in this case the daily closing higher which
+                    # selects the ticker symbol and the date for which the ticker symbol needs to be scanned
+                    for row in self.trade_entry_rowslist:
+                        if str(self.line[ndays + 1]) == str(row[0])[:10]:
+                            index = self.trade_entry_rowslist.index(row)
 
-                                # found the date for a particular stock from which we have to scan
-                                # for trading opportunities. Reset all stock specific counters
-                                self.total_cost = 0.0
-                                self.total_sell = 0.0
-                                self.c_total_wins = 0
-                                self.c_total_sellEOD = 0
-                                self.c_total_stoploss = 0
-                                bought = 0
-                                self.c_transactions_today = 0
-                                self.stop_loss = self.initial_stoploss
+                            # found the date for a particular stock from which we have to scan
+                            # for trading opportunities. Reset all stock specific counters
+                            self.total_cost = 0.0
+                            self.total_sell = 0.0
+                            self.c_total_wins = 0
+                            self.c_total_sellEOD = 0
+                            self.c_total_stoploss = 0
+                            bought = 0
+                            self.c_transactions_today = 0
+                            self.stop_loss = self.initial_stoploss
 
-                                # initialise output variables
-                                self.new_output_row()
+                            # initialise output variables
+                            self.new_output_row()
 
-                                ndays_scanned = 0
+                            ndays_scanned = 0
 
-                                break
+                            break
 
-                        # After getting the index, the closing of the previous day
-                        i = 1
-                        # move backwards one row at a time - select the first row which does not have any header
-                        # there is implicit logic that the preceding non-header row will be of the previous day because
-                        # the current row is the first occurrence of a new day since we are moving one candle at a time
-                        # and so the first candle where we encounter a particular date is also the beginning of the day
-                        # for that date
-                        while 'Close' in self.rowslist[index - i]:
-                            i = i + 1
+                    self.trade_entry_index = index
+                    prev_row = self.get_prev_row_for_trade_entry()
+                    row = self.get_row_for_trade_entry()
+                    # After getting the index, the closing of the previous day
+                    i = 1
+                    # move backwards one row at a time - select the first row which does not have any header
+                    # there is implicit logic that the preceding non-header row will be of the previous day because
+                    # the current row is the first occurrence of a new day since we are moving one candle at a time
+                    # and so the first candle where we encounter a particular date is also the beginning of the day
+                    # for that date
+                    while 'Close' in prev_row:
+                        i = i + 1
 
-                        date = str(self.rowslist[index][self.datetime_column])[:10]
-                        prev_day_date = str(self.rowslist[index - i][self.datetime_column])[:10]
+                    date = str(row[self.datetime_column])[:10]
+                    prev_day_date = str(prev_row[self.datetime_column])[:10]
+                    # unexpected condition:  we expect the previous road to always have a different date (TODO:
+                    # tighten the condition by testing that it should be before the current date)
+                    if (prev_day_date == date):
+                        self.logger.critical("Data is corrupted")
+                        self.logger.critical("Moving to the next stock...")
+                        continue
 
-                        # unexpected condition:  we expect the previous road to always have a different date (TODO:
-                        # tighten the condition by testing that it should be before the current date)
-                        if (prev_day_date == date):
-                            self.logger.critical("Data is corrupted")
-                            self.logger.critical("Moving to the next stock...")
+                    open_price = float(row[self.open_column])
+                    self.day_open_price[-1] = str(open_price)
+                    do_not_buy = 0
+                    purchase_date = date[:10]
+                    c = 0
+                    # initial value of index
+                    # = index of the row with the first occurrence of the date from which we have to scan
+                    while len(row) != 0:
+                        #print(row)
+                        #print(self.trade_entry_rowslist[index][0])
+                        # do not read data which contains  headers such as "Close"
+                        if 'Close' in row:
+                            row = self.get_row_for_trade_entry()
                             continue
 
-                        index_open = index
-                        open_price = float(self.rowslist[index][self.open_column])
-                        # print(open_price)
-                        self.day_open_price[-1] = str(open_price)
-                        do_not_buy = 0
-                        purchase_date = date[:10]
-                        c = 0
-                        # initial value of index
-                        # = index of the row with the first occurrence of the date from which we have to scan
-                        while index < len(self.rowslist):
-                            row = self.rowslist[index]
+                        # Current price of the stock
+                        current_price = float(row[self.close_column])
+                        if row[self.datetime_column][:10] != date[:10]:
+                            # encountered a new date;
+                            date = row[self.datetime_column][:10]
+                            do_not_buy = 1
+                            ndays_scanned = ndays_scanned + 1
+                            # stop scanning if we exceed the threshold of number of days to be scanned from the date
+                            # recommended by the previous algorithm ( in this case the daily closing higher)
+                            if ndays_scanned > self.max_ndays_scan:
+                                break
 
-                            # do not read data which contains  headers such as "Close"
-                            if 'Close' in row:
-                                index += 1
-                                continue
+                        # if no stocks have been bought as yet...
+                        if bought == 0 and do_not_buy == 0:
+                            # ... and the current price is near the closing price of the previous day
+                            buy_bool = False
+                            if self.position_flag == 1:
+                                buy_bool = self.crossover_from_below(macd_list[self.trade_entry_index - 1],macd_list[self.trade_entry_index - 1 - i],signal_list[self.trade_entry_index - 1],
+                                                                        signal_list[self.trade_entry_index - 1 - i])
+                            else:
+                                buy_bool = self.crossover_from_above(macd_list[self.trade_entry_index - 1],macd_list[self.trade_entry_index - 1 - i],signal_list[self.trade_entry_index - 1],
+                                                                        signal_list[self.trade_entry_index - 1 - i])
+                            if buy_bool:
+                                self.logger.info("Crossed Above Signal Line: Before - MACD = " +
+                                    str(macd_list[self.trade_entry_index - 1 - i]) + " SIGNAL = " + str(signal_list[self.trade_entry_index - 1 - i]) +
+                                    " Now - MACD = " + str(macd_list[self.trade_entry_index - 1]) + " SIGNAL = " +
+                                                    str(signal_list[self.trade_entry_index - 1]))
+                                self.logger.info("Current Value = " + str(row))
+                                prev_row = self.get_prev_row_for_trade_entry()
+                                self.logger.info("Previous Values = " + str(prev_row))
+                                # ... and the corresponding index is also increasing
+                                # if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, self.position_flag ,
+                                #                                     str(row[self.datetime_column])):
 
-                            # Current price of the stock
-                            current_price = float(row[self.close_column])
+                                if True:
+                                        # ... simulate the buying of stocks
 
-                            if row[self.datetime_column][:10] != date[:10]:
-                                # encountered a new date;
-                                date = row[self.datetime_column][:10]
-                                do_not_buy = 1
-                                ndays_scanned = ndays_scanned + 1
-                                # stop scanning if we exceed the threshold of number of days to be scanned from the date
-                                # recommended by the previous algorithm ( in this case the daily closing higher)
-                                if ndays_scanned > self.max_ndays_scan:
-                                    break
+                                        #1.if there are more than one transactions, initialise a new row for output
+                                        if (self.c_transactions_today > 0):
+                                            self.new_output_row()
+                                        # print("Transactions today: ", self.c_transactions_today)
+                                        # ... & update the output
+                                        self.index_in_same_direction[-1] = "1"
+                                        self.recorded_date[-1] = date
+                                        self.day_open_price[-1] = str(open_price)
 
-                            # if no stocks have been bought as yet...
-                            if bought == 0 and do_not_buy == 0:
-                                # ... and the current price is near the closing price of the previous day
-                                buy_bool = False
-                                if self.position_flag == 1:
-                                    buy_bool = self.crossover_from_below(macd_list[index - 1],macd_list[index - 1 - i],signal_list[index - 1],
-                                                                         signal_list[index - 1 - i])
-                                else:
-                                    buy_bool = self.crossover_from_above(macd_list[index - 1],macd_list[index - 1 - i],signal_list[index - 1],
-                                                                         signal_list[index - 1 - i])
+                                        # 2. buy the stocks at the current price and  update the tracking counters
+                                        bought = self.buy_stocks(row)
+                                        purchase_price = current_price
+                                        if bought != 0:
+                                            self.init_trade_exit_index(row[self.datetime_column])
+                                            #the bool for whether we are entering trade or exiting. False means entry
+                                            #True means exit
+                                            self.entry_or_exit = True
 
-                                if buy_bool:
-                                    self.logger.info("Crossed Above Signal Line: Before - MACD = " +
-                                        str(macd_list[index - 1 - i]) + " SIGNAL = " + str(signal_list[index - 1 - i]) +
-                                        " Now - MACD = " + str(macd_list[index - 1]) + " SIGNAL = " +
-                                                     str(signal_list[index - 1]))
-                                    self.logger.info("Current Value = " + str(self.rowslist[index]))
-                                    self.logger.info("Previous Values = " + str(self.rowslist[index - i]))
-                                    # ... and the corresponding index is also increasing
-
-                                    if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, self.position_flag ,
-                                                                     str(self.rowslist[index][self.datetime_column])):
-
-                                    # if True:
-                                            # ... simulate the buying of stocks
-
-                                            #1.if there are more than one transactions, initialise a new row for output
-                                            if (self.c_transactions_today > 0):
-                                                self.new_output_row()
-                                            # print("Transactions today: ", self.c_transactions_today)
-                                            # ... & update the output
-                                            self.index_in_same_direction[-1] = "1"
-                                            self.recorded_date[-1] = date
-                                            self.day_open_price[-1] = str(open_price)
-
-                                            # 2. buy the stocks at the current price and  update the tracking counters
-                                            bought = self.buy_stocks(current_price, index)
-                                            purchase_price = current_price
-
-                            if bought != 0:
-                                if self.sell_stock_due_to_price_check(bought, purchase_price, purchase_date, index):
-                                    bought = 0
-                                    ndays_scanned = 0
-                            if bought != 0:
-                                if self.use_tsl == 1:
-                                    if (self.position_flag == 1 and
-                                        float(self.rowslist[index][self.close_column]) > purchase_price) or\
-                                            (self.position_flag == -1 and
-                                             float(self.rowslist[index][self.close_column]) < purchase_price):
-                                        self.logger.info("index " + str(index) + " " + str(row) + "\n")
-                                        if self.initial_target_met(purchase_price, index) == True:
-                                            self.trailing_stoploss(self.initial_stoploss, purchase_price, index)
-                                            self.logger.info("Stop-loss Changed = " + str(self.stop_loss) + " from " + str(self.initial_stoploss))
-                                if self.sell_stock_due_to_stop_loss(bought, purchase_price, purchase_date, index):
-                                    bought = 0
-                                    ndays_scanned = 0
-                            '''        
-                            print("ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
-                                self.max_ndays_scan) + "\n"+"bought: " + str(bought) + "\n" + str(self.rowslist[index]))
-                            '''
-                            if (ndays_scanned == self.max_ndays_scan) and bought != 0:
-                                if config.config.trading_closing_time in self.rowslist[index][self.datetime_column]:
-                                    self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, index)
-                                    bought = 0
-                                    ndays_scanned = 0
-                            if (index == len(self.rowslist) - 1) and bought != 0:
-                                self.logger.info("End of day sale at time: " +
-                                                 str(self.rowslist[index][self.datetime_column ]) + "\n")
-                                self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, index)
+                        if bought != 0:
+                            if self.sell_stock_due_to_price_check(bought, purchase_price, purchase_date, row):
                                 bought = 0
                                 ndays_scanned = 0
-
-                            index += 1
-
-                        # this is unexpected condition. It may happen only if  there has been no trade at 15:15
+                                self.entry_or_exit = False
+                                self.init_trade_entry_index()
                         if bought != 0:
-                            self.logger.error("***Error: could not sell stock  = ***" + "\n")
-                            self.logger.error("***ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
-                                self.max_ndays_scan) + "\n")
-                            print("***Error: could not sell stock  = ***" + "\n")
-                            print("***ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
-                                self.max_ndays_scan) + "\n")
+                            if self.use_tsl == 1:
+                                if (self.position_flag == 1 and
+                                    float(row[index][self.close_column]) > purchase_price) or\
+                                        (self.position_flag == -1 and
+                                            float(row[index][self.close_column]) < purchase_price):
+                                    self.logger.info("index " + str(index) + " " + str(row) + "\n")
+                                    if self.initial_target_met(purchase_price, row) == True:
+                                        self.trailing_stoploss(self.initial_stoploss, purchase_price, row)
+                                        self.logger.info("Stop-loss Changed = " + str(self.stop_loss) + " from " + str(self.initial_stoploss))
+                            if self.sell_stock_due_to_stop_loss(bought, purchase_price, purchase_date, row):
+                                bought = 0
+                                ndays_scanned = 0
+                                self.entry_or_exit = False
+                                self.init_trade_entry_index()
+                        '''        
+                        print("ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
+                            self.max_ndays_scan) + "\n"+"bought: " + str(bought) + "\n" + str(row[index]))
+                        '''
+                        if (ndays_scanned == self.max_ndays_scan) and bought != 0:
+                            if config.config.trading_closing_time in row[self.datetime_column]:
+                                self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, row)
+                                bought = 0
+                                ndays_scanned = 0
+                                self.entry_or_exit = False
+                                self.init_trade_entry_index()
+                        if (self.check_trade_exit_eof()) and bought != 0:
+                            self.logger.info("End of day sale at time: " +
+                                                str(row[self.datetime_column ]) + "\n")
+                            self.sell_stock_at_end_of_day(bought, purchase_price, purchase_date, row)
+                            bought = 0
+                            ndays_scanned = 0
+                        self.move_to_next_row()
+                        if self.entry_or_exit == False:
+                            row = self.get_row_for_trade_entry()
+                            self.logger.debug("row for trade entry" + row)
+                        else:
+                            row = self.get_row_for_trade_exit()
+                            self.logger.debug("row for trade exit" + row)
 
-                        self.logger.info(
-                            "Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) +
-                            " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " +
-                            self.line[self.column_no_of_ticker] + "\n")
-                        self.logger.info("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " +
-                                         str(self.c_total_sellEOD) + " Stop Loss = " + str(
-                            self.c_total_stoploss) + "\n")
+                    # this is unexpected condition. It may happen only if  there has been no trade at 15:15
+                    if bought != 0:
+                        self.logger.error("***Error: could not sell stock  = ***" + "\n")
+                        self.logger.error("***ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
+                            self.max_ndays_scan) + "\n")
+                        print("***Error: could not sell stock  = ***" + "\n")
+                        print("***ndays scanned = " + str(ndays_scanned) + "\n" + "max ndays = " + str(
+                            self.max_ndays_scan) + "\n")
 
-                        rows = zip(self.recorded_date, self.day_open_price, self.buy_amount, self.sell_amount,
-                                   self.buy_transaction, self.sell_met_target, self.sell_EOD, self.sell_stop_loss)
+                    self.logger.info(
+                        "Total buy = " + str(self.total_cost) + " total sell = " + str(self.total_sell) +
+                        " and total profit = " + str(self.total_sell - self.total_cost) + " for stock " +
+                        self.line[self.column_no_of_ticker] + "\n")
+                    self.logger.info("Total wins = " + str(self.c_total_wins) + " Total sell EOD = " +
+                                        str(self.c_total_sellEOD) + " Stop Loss = " + str(
+                        self.c_total_stoploss) + "\n")
 
-                        with open(path_to_output_directory + self.line[self.column_no_of_ticker] + ".csv", 'w',
-                                  newline="") as f:
-                            writer = csv.writer(f)
-                            for row in rows:
-                                writer.writerow(row)
-                            f.close()
+                    rows = zip(self.recorded_date, self.day_open_price, self.buy_amount, self.sell_amount,
+                                self.buy_transaction, self.sell_met_target, self.sell_EOD, self.sell_stop_loss)
+
+                    with open(path_to_output_directory + self.line[self.column_no_of_ticker] + ".csv", 'w',
+                                newline="") as f:
+                        writer = csv.writer(f)
+                        for row in rows:
+                            writer.writerow(row)
+                        f.close()
 
         overall_profit = (self.overall_sell - self.overall_cost) / (self.overall_cost) * 100
         self.logger.info("Total purchases = " + str(self.total_purchased) + " total sold = " + str(self.total_sold) + "\n")

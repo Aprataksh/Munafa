@@ -3,12 +3,13 @@ import ast
 class config():
     # the time after which we cease any buy or sell transaction
     trading_closing_time = "15:00"
+    # purchase_cutoff_time = "11:00 am"
     purchase_cutoff_time = "05:00 pm"
-
     def __init__(self, path_to_config):
         with open(path_to_config, "r") as f:
             dictionary = ast.literal_eval(f.read())
             self.historical_5_dir = dictionary.get("path_to_historical_5_dir")
+            self.historical_30_dir = dictionary.get("path_to_historical_30_dir")
             self.master_list = dictionary.get("path_to_master_list")
             self.output_dir = dictionary.get("path_to_output_dir")
             self.index_dir = dictionary.get("path_to_index_dir")
@@ -18,9 +19,13 @@ class config():
             self.ledger_log = dictionary.get("path_to_ledger_log")
             self.historical_1_day_dir = dictionary.get("path_to_historical_1_day_dir")
             self.index_1_day_dir = dictionary.get("path_to_index_1_day_data")
+            self.trade_entry_data = dictionary.get("path_to_trade_entry_data")
+            self.trade_exit_data = dictionary.get("path_to_trade_exit_data")
 
     def path_to_historical_5_min_dir(self):
         return self.historical_5_dir
+    def path_to_historical_30_min_dir(self):
+        return self.historical_30_dir
     def path_to_master_list(self):
         return self.master_list
     def path_to_index_dir(self):
@@ -38,8 +43,11 @@ class config():
     def path_to_historical_1_day_dir(self):
         return self.historical_1_day_dir
     def path_to_index_1_day_dir(self):
-         return self.index_1_day_dir
-
+        return self.index_1_day_dir
+    def path_to_trade_entry_dir(self):
+        return self.trade_entry_data
+    def path_to_trade_exit_dir(self):
+        return self.trade_exit_data
 class col_num():
     def __init__(self, path_to_config):
         with open(path_to_config, "r") as f:
