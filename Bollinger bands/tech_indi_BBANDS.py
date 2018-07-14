@@ -7,44 +7,36 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.insert(0, r"..\utilities")
 import get_ticker_list
+import config
 import sanitise_data
 
+config_obj = config.config(r"../config.txt")
 # Compute the Bollinger Bands
-def BBANDS(data, window=50):
-    MA = data.Close.rolling(window=window).mean()
+def BBANDS(data, window):
+    MA = data['Close'].rolling(window=window).mean()
     SD = data.Close.rolling(window=window).std()
     data['UpperBB'] = MA + (2 * SD)
     data['LowerBB'] = MA - (2 * SD)
     return data
 
-def main():
+def main(path, period, ticker):
     # modify the directory path below according to your requirements
     # Note: these directories should already be existing in your file system
 
     # path to the list that contains the symbols for all the stocks that need to be downloaded
-    path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
+    path_to_stock_master_list = config_obj.path_to_master_list()
     # path to the directory that contains all the historical data
-    path_to_historical_data = "C:/Users/Rohit/Python_source_code/historical_stock_5_min_data/"
-    # date before which we are not going to process the data
-    date = "2018-04-10"
+    path_to_historical_data = path
+    data = pd.read_csv(path_to_historical_data + ticker + ".csv")
+    # Compute the Bollinger Bands for NIFTY using the 50-day Moving average
+    NIFTY_BBANDS = BBANDS(data, period)
+    return NIFTY_BBANDS
 
-    ticker_list = get_ticker_list.get_ticker_list(path_to_stock_master_list)
-    for ticker in ticker_list[:2]:
-        # Sanitise the data
-        # At this stage, we are removing any extra  headers  (which can be  added during that downloading process)
-        # also remove all the data  that is before the user specified date
-        data = sanitise_data.sanitise_data(path_to_historical_data, ticker, date)
-
-        # Compute the Bollinger Bands for NIFTY using the 50-day Moving average
-        n = 50
-        NIFTY_BBANDS = BBANDS(data, n)
-        print(NIFTY_BBANDS)
-
-        # Create the plot
-        pd.concat([NIFTY_BBANDS.Close, NIFTY_BBANDS.UpperBB, NIFTY_BBANDS.LowerBB], axis=1).plot(figsize=(9, 5),
-                                                                                                  grid=True)
-        plt.title(ticker)
-        plt.show()
-
-
-main()
+    '''
+    # Create the plot
+    pd.concat([NIFTY_BBANDS.Close, NIFTY_BBANDS.UpperBB, NIFTY_BBANDS.LowerBB], axis=1).plot(figsize=(9, 5),
+                                                                                                grid=True)
+    plt.title(ticker)
+    plt.show()
+    '''
+main(config_obj.path_to_historical_1_day_dir(), 2, "3MINDIA")
