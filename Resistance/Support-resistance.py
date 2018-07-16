@@ -11,16 +11,7 @@ sys.path.insert(0, "../Utilities")
 from config import config
 import get_ticker_list
 import datetime
-
-# Flag for 1 = resistance or 0 = support
-flag_val = 0
-
-
-def flag():
-    if flag_val == 1:
-        return 1
-    else:
-        return 0
+import argparse
 
 
 def resistance(ticker):
@@ -42,7 +33,7 @@ def resistance(ticker):
         """CODE TO CALCULATE RESISTANCE"""
 
     if len(df.columns):
-        if flag() == 1:
+        if flag_val == 1:
             data = df['High'].tolist()
         else:
             data = df['Low'].tolist()
@@ -75,14 +66,28 @@ global configuration settings
 # the list that contains the symbols for all the stocks that need to be downloaded
 # path_to_stock_master_list = "C:/Users/Rohit/Python_source_code/list of stocks/nifty500_list.csv"
 
+# Argument Parsing
+parser = argparse.ArgumentParser(description="Support-resistance")
+parser.add_argument("flag", type=int, help="Enter 1 for Resistance or 0 for Support")
+flag_val = parser.parse_args().flag
+
+# Condition if flag is neither 0 nor 1
+if flag_val != 0 and flag_val != 1:
+    print("Wrong Flag Value, Enter 1 for resistance or 0 for Support")
+    exit(-1)
+
 # Config Object created
 config_object = config("../config.txt")
 path_to_stock_master_list = config_object.path_to_master_list()
 path_to_historical_data = config_object.path_to_historical_5_min_dir()
 
 # determine the timestamp to append to the name of the output file
-time = str(datetime.datetime.today())[:13] + ";" + str(datetime.datetime.today())[14:16]
-path_to_output = config_object.path_to_output_dir() + time + ".csv"
+time = str(datetime.datetime.today())[:13] + str(datetime.datetime.today())[14:16]
+if flag_val == 1:
+    path_to_output = config_object.path_to_output_dir() + "resistance " + time + ".csv"
+else:
+    path_to_output = config_object.path_to_output_dir() + "support " + time + ".csv"
+
 
 # the initial date from which we need to start processing the data.
 # make sure that this date falls on a trading  day.
