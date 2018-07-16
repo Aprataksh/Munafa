@@ -5,17 +5,41 @@ import sys
 sys.path.insert(0, r"..\utilities")
 import get_ticker_list
 import config
-
-# Dow Jones
+import argparse, datetime
 
 obj = config.config(r"../config.txt")
 def main():
-    ticker_url=""
-    ticker_list = get_ticker_list.get_ticker_list(obj.path_to_master_list())
-    path_to_output_dir1 = obj.path_to_output_dir() + "historical 1 day data/Final data/"
-    path_to_output_dir2 = obj.path_to_output_dir() + "historical 1 day data/Downloaded data/"
+    # Extracting arguments from command line
+    parser = argparse.ArgumentParser(description="download data")
+    parser.add_argument("seconds", type=int, help="Number of seconds")
+    parser.add_argument("days", type=int, help="Number of days")
 
-    path_to_historical_1_day_data = obj.path_to_historical_1_day_dir()
+    args = parser.parse_args()
+    sec = args.seconds
+    day = args.days
+
+    # Names for the directory
+    date = str(datetime.datetime.today())[:10]
+    path_to_final_data = obj.path_to_output_dir() + "final data " + str(sec) + " " + date + "/"
+    path_to_downloaded_data = obj.path_to_output_dir() + "downloaded data " + str(sec) + " " + date + "/"
+
+    # Making required directory
+    os.makedirs(path_to_final_data, exist_ok=True)
+    os.makedirs(path_to_downloaded_data, exist_ok=True)
+
+    # Condition for whether input seconds data exists or not
+    if sec == 300:
+        path_to_historical_data = obj.path_to_historical_5_min_dir()
+    elif sec == 1800:
+        path_to_historical_data = obj.path_to_historical_30_min_dir()
+    elif sec == 86400:
+        path_to_historical_data = obj.path_to_historical_1_day_dir()
+    else:
+        print("No such stock data present")
+        exit(-1)
+
+    ticker_url = ""
+    ticker_list = get_ticker_list.get_ticker_list(obj.path_to_master_list())
     for ticker in ticker_list:
         if "_26" in ticker:
             ticker_url = ticker[:ticker.index('_')] + "&" + ticker[ticker.index('_')+3:]
@@ -24,20 +48,20 @@ def main():
 
         param = {
             'q': ticker_url,  # Stock symbol (ex: "AAPL")
-            'i': "1800",  # Interval size in seconds ("86400" = 1 day intervals)
+            'i': str(sec),  # Interval size in seconds ("86400" = 1 day intervals)
             'x': "NSE",  # Stock exchange symbol on which stock is traded (ex: "NASD")
-            'p': "20d"  # Period (Ex: "1Y" = 1 year)
+            'p': str(day) + "d"  # Period (Ex: "1Y" = 1 year)
         }
         # get price data (return pandas dataframe)
         df = get_price_data(param)
         df.index.name = "Date Time"
         df = df[['Close', 'High', 'Low', 'Open', 'Volume']]
-        df.to_csv(path_to_output_dir2 + ticker + ".csv")
+        df.to_csv(path_to_downloaded_data + ticker + ".csv")
         if len(df.index) == 0:
             print("Error : No data online")
         print(ticker_url)
 
-    if len(fnmatch.filter(os.listdir(path_to_output_dir2), "*.csv")) == len(ticker_list):
+    if len(fnmatch.filter(os.listdir(path_to_downloaded_data), "*.csv")) == len(ticker_list):
         print("Downloaded Data Complete")
 
     for ticker in ticker_list:
@@ -46,9 +70,8 @@ def main():
         else:
             ticker_url = ticker
 
-        df = pd.read_csv(path_to_output_dir2 + ticker + ".csv", index_col=None)
-        path_to_historical_data = path_to_historical_1_day_data + ticker + ".csv"
-        df2 = pd.read_csv(path_to_historical_data, index_col=None)
+        df = pd.read_csv(path_to_downloaded_data + ticker + ".csv", index_col=None)
+        df2 = pd.read_csv(path_to_historical_data + ticker + ".csv", index_col=None)
         if "Date Time" not in df2.columns:
             df2.columns = ['Date Time', 'Close', 'High', 'Low', 'Open', 'Volume']
         df2 = df2[['Date Time', 'Close', 'High', 'Low', 'Open', 'Volume']]
@@ -73,11 +96,11 @@ def main():
         else:
             print("Error : NO data in repository")
             df2 = df
-        df2.to_csv(path_to_output_dir1 + ticker + ".csv", index=False)
+        df2.to_csv(path_to_final_data + ticker + ".csv", index=False)
         print(ticker_url)
 
     """Change according to the number of tickers"""
-    if len(fnmatch.filter(os.listdir(path_to_output_dir1), "*.csv")) == len(ticker_list):
+    if len(fnmatch.filter(os.listdir(path_to_final_data), "*.csv")) == len(ticker_list):
         print("Final Data Complete")
 
 
