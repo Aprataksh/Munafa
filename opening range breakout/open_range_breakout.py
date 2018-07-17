@@ -16,7 +16,7 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
                         datefmt='%Y-%m-%d', format=LOG_FORMAT, filemode='w')
     logger = logging.getLogger()
 
-    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld, pos_flag, utsl):
+    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld, pos_flag, utsl,mtg):
         self.deviation_from_prev_close = dfpc
         self.max_price_volatility = mpv
         self.max_deviation_from_open = mdfo
@@ -35,6 +35,7 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
         self.trailing_sl_diff = tsld
         self.position_flag=pos_flag
         self.use_tsl = utsl
+        self.min_threshold_gap = mtg
 
     def initialise_output_headers_row(self):
         self.recorded_date = ["Date"]
@@ -124,6 +125,8 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
                     prev_high_val = 0
                     high_val_at_10 = 0
                     low_open_close_10 = 0
+                    open_val = 0
+                    prev_close_val = 0
                     self.total_cost = 0.0
                     self.total_sell = 0.0
                     self.c_total_wins = 0
@@ -139,7 +142,8 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
                             if self.line[2] + " 10:00:00" == str(row[self.datetime_column]):
                                 high_val_at_10 = float(row[self.high_column])
                                 low_open_close_10 = float(min(row[self.open_column],row[self.close_column]))
-                    if high_val_at_10 == 0 or low_open_close_10 == 0:
+                                open_val = float(row[self.close_column])
+                    if high_val_at_10 <= 0 or low_open_close_10 <= 0 or open_val <= 0:
                         self.logger.info("1 hour data is corrupted")
                         continue
                     with open(self.obj.path_to_historical_1_day_dir() + self.line[self.column_no_of_ticker] + ".csv", 'r') as b:
@@ -147,8 +151,20 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
                         for row in rows:
                             if self.line[1] in str(row[self.datetime_column]):
                                 prev_high_val = float(row[self.high_column])
-                    if prev_high_val == 0:
-                        self.logger.critical("1 day data is corrupted")
+                                prev_close_val = float(row[self.close_column])
+
+                    if prev_high_val <= 0 or prev_close_val <= 0:
+                        self.logger.critical("1 day data is corrupted as values are negative")
+
+                    self.logger.debug("Opening Gap: open Value: " + str(open_val) + " previous close value: "
+                                          + str(prev_close_val) + " minimum threshold gap: "
+                                      + str(self.min_threshold_gap))
+
+                    if ((open_val - prev_close_val)/prev_close_val) < self.min_threshold_gap:
+                        self.logger.info("Less Opening Gap: open Value: " + str(open_val) + "previous close value: "
+                                             + str(prev_close_val) + "minimum threshold gap " + str(self.min_threshold_gap))
+                        continue
+
                     self.trade_entry_index = self.find_date_in_date_list(self.line[2] + " 10:00:00",1,self.trade_entry_rowslist)
                     if self.trade_entry_index == -1:
                         self.logger.critical("Data not found in trade entry data")
@@ -353,6 +369,7 @@ def main():
     initial_target = 0.09
     trailing_stop_loss = 0.005
     tsl_difference = initial_target - trailing_stop_loss
+    min_threshold_gap = 0.01
     # should be used trailing stoploss or not; I signed it the value of 1  to use trailing stop loss.if it is 0,
     # the value of initial target, trailing stoploss and tsl difference are ignored
     use_tsl = 0
@@ -370,12 +387,13 @@ def main():
     orb_obj = ORB(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
               target_price, stop_loss, max_ndays_scan, initial_target, trailing_stop_loss, tsl_difference, position_type,
-              use_tsl)
+              use_tsl, min_threshold_gap)
     logger.info(" position type(Long or Short): " + str(position_type) + " using trailing stoploss: " + str(use_tsl) +
                 " initial target for trailing stoploss: " + str(initial_target)  + "\n")
     logger.info(" trailing stoploss: " + str(trailing_stop_loss) + " trailing stoploss difference: " + str(tsl_difference) + "\n")
     logger.info(" purchase cut-off time: " + str(obj.purchase_cutoff_time) +
                 " selling cut-off time: " + str(obj.trading_closing_time) + "\n")
+    logger.info(" minimum threshold gap" + str(min_threshold_gap) + "\n")
 
     orb_obj.ORB()
 
