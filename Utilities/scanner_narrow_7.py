@@ -67,7 +67,7 @@ def get_narrow_7(ndays, output_folder):
     path_to_stock_masterlist = config_object.path_to_master_list()
     ticker_list = get_ticker_list.get_ticker_list(path_to_stock_masterlist)
 
-    output_filename = "scanner_narrow7_output.csv"
+    output_filename = "scanner_output.csv"
     log_filename = "strategy_log.log"
 
     """Logging Details"""
@@ -94,21 +94,20 @@ def get_narrow_7(ndays, output_folder):
             for j in range(i,i + ndays):
                 range_value = abs( close_day[j] - open_day[j] )
                 range_list.append(range_value)
-                logger.info(date_day[j][:10]+" "+str(range_value))
+                logger.debug(date_day[j][:10]+" "+str(range_value))
             if j+1 < len(date_day) - 1:
                 range_value = abs(close_day[j+1] - open_day[j+1])
-                logger.info(date_day[j+1][:10]+" "+str(range_value))
+                logger.debug(date_day[j+1][:10]+" "+str(range_value))
                 if range_value < min(range_list):
+                    date_list.append(date_day[j+1][:10])
                     date_list.append(date_day[j+2][:10])
                     dates.append(date_list)
-            logger.info("\n")
+            logger.debug("\n")
         with open(path_to_output_dir + output_filename, 'w', newline="") as f:
             writer = csv.writer(f)
             for row in dates:
                 writer.writerow(row)
 def main():
     ndays = 7
-    output_folder = "Narrow 7/"
+    output_folder = "Narrow7/"
     get_narrow_7(ndays, output_folder)
-
-main()
