@@ -2,7 +2,7 @@ import csv
 import sys
 import pandas as pd
 import logging
-sys.path.insert(0, r"..\utilities")
+sys.path.insert(0, r"..\Utilities")
 import is_index_in_same_direction
 import MACD_file
 import Buy_Sell
@@ -17,7 +17,7 @@ class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
                         format=LOG_FORMAT, filemode='w')
     logger = logging.getLogger()
 
-    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld, pos_flag, utsl):
+    def __init__(self, dfpc, mpv, mdfo, mvv, mcfsb, tp, sl, mns, it, tsl, tsld, pos_flag, utsl, dpc):
         self.deviation_from_prev_close = dfpc
         self.max_price_volatility = mpv
         self.max_deviation_from_open = mdfo
@@ -36,6 +36,7 @@ class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
         self.trailing_sl_diff = tsld
         self.position_flag=pos_flag
         self.use_tsl = utsl
+        self.dch_per_change = dpc
 
     def initialise_output_headers_row(self):
         self.recorded_date = ["Date"]
@@ -117,6 +118,10 @@ class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
             self.lines = csv.reader(f)
             for self.line in self.lines:
                 if "Symbol" not in self.line:
+                    # Condition for checking the percentage in the daily closing higher
+                    print("Per_change = " + str(self.line[ndays + 2]) + " Threshold = " + str(self.dch_per_change))
+                    if float(self.line[ndays + 2]) < self.dch_per_change:
+                        continue
                     if '&' in self.line[self.column_no_of_ticker]:
                         ''''modification required: modify the code to include the _ depending on the file name
                         self.line[self.column_no_of_ticker] = self.line[self.column_no_of_ticker][
@@ -129,7 +134,8 @@ class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
                                                               + "%26" + self.line[self.column_no_of_ticker][
                                                                         self.line[self.column_no_of_ticker].index(
                                                                             '&') + 1:]
-                    macd_list, signal_list = MACD_file.macd_crossover(self.line[self.column_no_of_ticker],self.obj.path_to_trade_entry_dir())
+                    macd_list, signal_list = MACD_file.macd_crossover(self.line[self.column_no_of_ticker],
+                                                                      self.obj.path_to_trade_entry_dir())
                     self.read_trade_entry_data()
                     self.read_trade_exit_data()
                     # initialised the headers  for output
@@ -168,7 +174,7 @@ class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
                             # initialise output variables
                             self.new_output_row()
 
-                            ndays_scanned = 0
+                            ndays_scanned = 1
 
                             break
 
@@ -305,10 +311,10 @@ class DCH_MACD(Buy_Sell.Buy_sell,data_reader.data_reader):
                         self.move_to_next_row()
                         if self.entry_or_exit == False:
                             row = self.get_row_for_trade_entry()
-                            self.logger.debug("row for trade entry" + row)
+                            self.logger.debug("row for trade entry" + str(row))
                         else:
                             row = self.get_row_for_trade_exit()
-                            self.logger.debug("row for trade exit" + row)
+                            self.logger.debug("row for trade exit" + str(row))
 
                     # this is unexpected condition. It may happen only if  there has been no trade at 15:15
                     if bought != 0:
@@ -364,12 +370,13 @@ def main():
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.015
+    target_price = 0.01
     # the stoploss needs to be negative.
-    stop_loss = -0.05
-    max_ndays_scan = 5
+    stop_loss = -0.02
+    max_ndays_scan = 1
     initial_target = 0.03
     trailing_stop_loss = 0.005
+    dch_per_change = 0.03
     tsl_difference = initial_target - trailing_stop_loss
     # should be used trailing stoploss or not; I signed it the value of 1  to use trailing stop loss.if it is 0,
     # the value of initial target, trailing stoploss and tsl difference are ignored
@@ -388,7 +395,7 @@ def main():
     dch_macd_obj = DCH_MACD(deviation_from_prev_close, max_price_volatility, max_deviation_from_open, max_volume_volatility,
               max_capital_for_single_buy,
               target_price, stop_loss, max_ndays_scan, initial_target, trailing_stop_loss, tsl_difference, position_type,
-              use_tsl)
+              use_tsl, dch_per_change)
     logger.info(" position type(Long or Short): " + str(position_type) + " using trailing stoploss: " + str(use_tsl) +
                 " initial target for trailing stoploss: " + str(initial_target)  + "\n")
     logger.info(" trailing stoploss: " + str(trailing_stop_loss) + " trailing stoploss difference: " + str(tsl_difference) + "\n")

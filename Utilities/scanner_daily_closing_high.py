@@ -75,7 +75,7 @@ def get_daily_closing_high(no_of_days, output_folder):
     logging.basicConfig(filename=path_to_output_dir + log_filename, level=logging.DEBUG, format=log_format, filemode="w")
     logger = logging.getLogger()
     for ticker in ticker_list:
-        #Drops the data before the initial date
+        # Drops the data before the initial date
         df = drop_data(ticker)
 
         """List containing 5-min data"""
@@ -87,11 +87,12 @@ def get_daily_closing_high(no_of_days, output_folder):
 
 
         """Code to implement the stock trading strateg"""
-        for i in range(1,len(date_day)-no_of_days+1):
+        for i in range(1, len(date_day) - no_of_days + 1):
             c = 0
             date_list = [ticker, date_day[i-1][:10]]
+            open_price = open_day[i-1]
             # Code Change: Add float to convert values from string
-            for j in range(0,no_of_days-1):
+            for j in range(0, no_of_days-1):
                 next_day = i + j + 1
                 current_day = i + j
                 previous_day = i + j - 1
@@ -99,15 +100,19 @@ def get_daily_closing_high(no_of_days, output_folder):
                         and float(close_day[previous_day]) > float(open_day[previous_day]):
                     day_change = float(close_day[previous_day])-float(open_day[previous_day])
                     if (float(close_day[previous_day]) - float(open_day[current_day])) < (.98 * day_change) \
-                            and float(low_day[current_day]) > float(open_day[previous_day]) :
+                            and float(low_day[current_day]) > float(open_day[previous_day]):
                         date_list.append(date_day[current_day][:10])
                         c += 1
                 if c == no_of_days-1:
+                    close_price = close_day[current_day]
+                    # Percentage change in the close price of final day and the opening price of the first day
+                    per = (close_price - open_price) / open_price
                     date_list.append(date_day[next_day][:10])
+                    # Rounded it off to 4 decimal places
+                    date_list.append(round(per, 4))
                     dates.append(date_list)
             if c == no_of_days-1:
                 strategy_ticker.append(ticker)
-
 
     if len(dates) == 0:
         logger.error("No companies followed this strategy")
@@ -128,6 +133,5 @@ def main():
     ndays = 2
     output_folder = "Check/"
     get_daily_closing_high(ndays, output_folder)
-    print("Hello")
 
-#main()
+# main()
