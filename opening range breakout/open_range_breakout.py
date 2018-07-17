@@ -1,3 +1,16 @@
+'''
+The opening range breakout uses the following rules: (using a long position as an example) Enter into a trade when
+there is an opening gap in the direction of the trade, the price crosses the high made in the opening range
+and  the price has also crossed the previous day's high. we also optionally look at tthe direction of the
+underlying index, if any
+
+In order to increase the chances of getting better returns, we combine it with the narrow range 7 or
+a narrow range 4 scanner
+
+Other possible  rules to add include looking at the relative volume &  also checking for resistance and support
+near the high or low of the opening range.
+'''
+
 import csv
 import sys
 import pandas as pd
@@ -160,9 +173,11 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
                                           + str(prev_close_val) + " minimum threshold gap: "
                                       + str(self.min_threshold_gap))
 
+                    # do not evaluate entering into a trade if the opening  gap is not passed the threshold
+                    # iin the same direction as that of the trade
                     if ((open_val - prev_close_val)/prev_close_val) < self.min_threshold_gap:
-                        self.logger.info("Less Opening Gap: open Value: " + str(open_val) + "previous close value: "
-                                             + str(prev_close_val) + "minimum threshold gap " + str(self.min_threshold_gap))
+                        self.logger.info("Less Opening Gap: open Value: " + str(open_val) + " previous close value: "
+                                             + str(prev_close_val) + " minimum threshold gap " + str(self.min_threshold_gap))
                         continue
 
                     self.trade_entry_index = self.find_date_in_date_list(self.line[2] + " 10:00:00",1,self.trade_entry_rowslist)
@@ -234,13 +249,15 @@ class ORB(Buy_Sell.Buy_sell,data_reader.data_reader):
 
                         # if no stocks have been bought as yet...
                         if bought == 0 and do_not_buy == 0:
-                            # ... and the current price is near the closing price of the previous day
+                            # ... and the current price has crossed to the high value of the opening range
                             if current_price > high_val_at_10:
+                                # ...and has also crossed the previous day high
                                 if current_price > prev_high_val:
-                                    #go to sleep if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, self.position_flag ,
-                                    #                                     str(row[self.datetime_column])):
+                                    # ... And the indexes also moving in the same direction
+                                    if is_index_in_same_direction.is_index_in_same_direction(path_to_index_file, self.position_flag ,
+                                                                        str(row[self.datetime_column])):
 
-                                    if True:
+                                    # if True:
                                             # ... simulate the buying of stocks
 
                                             #1.if there are more than one transactions, initialise a new row for output
@@ -362,14 +379,14 @@ def main():
     max_deviation_from_open = 100
     max_volume_volatility = 100
     max_capital_for_single_buy = 10000
-    target_price = 0.006
+    target_price = 0.012
     # the stoploss needs to be negative.
     stop_loss = -0.02
     max_ndays_scan = 1
     initial_target = 0.09
     trailing_stop_loss = 0.005
     tsl_difference = initial_target - trailing_stop_loss
-    min_threshold_gap = 0.01
+    min_threshold_gap = 0.015
     # should be used trailing stoploss or not; I signed it the value of 1  to use trailing stop loss.if it is 0,
     # the value of initial target, trailing stoploss and tsl difference are ignored
     use_tsl = 0
